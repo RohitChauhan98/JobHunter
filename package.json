@@ -1,0 +1,20 @@
+{
+  "private": true,
+  "name": "jobhunter",
+  "version": "0.1.0",
+  "description": "Automated job application assistant — extension + backend + web dashboard",
+  "scripts": {
+    "dev:extension": "cd extension && npm run dev",
+    "build:extension": "cd extension && npm run build",
+    "dev:backend": "cd backend && npm run dev",
+    "build:backend": "cd backend && npm run build",
+    "dev:web": "cd web && npm run dev",
+    "build:web": "cd web && npm run build",
+    "db:generate": "cd backend && npx prisma generate",
+    "db:push": "cd backend && npx prisma db push",
+    "db:migrate": "cd backend && npx prisma migrate dev",
+    "db:studio": "cd backend && npx prisma studio",
+    "install:all": "npm install && cd extension && npm install && cd ../backend && npm install && cd ../web && npm install",
+    "lint": "cd extension && npm run lint"
+  }
+}
