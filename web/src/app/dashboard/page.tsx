@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { applications } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { FileText, TrendingUp, MessageSquare, Trophy } from 'lucide-react';
 
 interface Stats {
   total: number;
@@ -23,13 +24,13 @@ export default function DashboardPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const statusLabels: Record<string, { label: string; color: string }> = {
-    draft: { label: 'Draft', color: 'bg-gray-100 text-gray-800' },
-    submitted: { label: 'Submitted', color: 'bg-blue-100 text-blue-800' },
-    interview: { label: 'Interview', color: 'bg-yellow-100 text-yellow-800' },
-    offer: { label: 'Offer', color: 'bg-green-100 text-green-800' },
-    rejected: { label: 'Rejected', color: 'bg-red-100 text-red-800' },
-    withdrawn: { label: 'Withdrawn', color: 'bg-gray-100 text-gray-600' },
+  const statusLabels: Record<string, { label: string; dotColor: string }> = {
+    draft: { label: 'Draft', dotColor: 'bg-muted-foreground' },
+    submitted: { label: 'Submitted', dotColor: 'bg-primary' },
+    interview: { label: 'Interview', dotColor: 'bg-yellow-500' },
+    offer: { label: 'Offer', dotColor: 'bg-green-500' },
+    rejected: { label: 'Rejected', dotColor: 'bg-destructive' },
+    withdrawn: { label: 'Withdrawn', dotColor: 'bg-muted-foreground' },
   };
 
   return (
@@ -47,65 +48,48 @@ export default function DashboardPage() {
         <>
           {/* Summary Cards */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Applications
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{stats.total}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">This Week</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{stats.thisWeek}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Interviews</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-yellow-600">{stats.byStatus?.interview || 0}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Offers</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-green-600">{stats.byStatus?.offer || 0}</div>
-              </CardContent>
-            </Card>
+            {[
+              { label: 'Total Applications', value: stats.total, icon: FileText, color: 'text-primary' },
+              { label: 'This Week', value: stats.thisWeek, icon: TrendingUp, color: 'text-primary' },
+              { label: 'Interviews', value: stats.byStatus?.interview || 0, icon: MessageSquare, color: 'text-yellow-500' },
+              { label: 'Offers', value: stats.byStatus?.offer || 0, icon: Trophy, color: 'text-green-500' },
+            ].map((item) => (
+              <Card key={item.label} className="border-border/50">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    {item.label}
+                  </CardTitle>
+                  <item.icon className={`h-4 w-4 ${item.color}`} />
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-3xl font-bold ${item.color}`}>{item.value}</div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
 
-          {/* Status Breakdown */}
+          {/* Status & Platform Breakdown */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <Card>
+            <Card className="border-border/50">
               <CardHeader>
                 <CardTitle>By Status</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {Object.entries(statusLabels).map(([key, { label, color }]) => (
+                  {Object.entries(statusLabels).map(([key, { label, dotColor }]) => (
                     <div key={key} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${color}`}>
-                          {label}
-                        </span>
+                        <span className={`inline-block h-2.5 w-2.5 rounded-full ${dotColor}`} />
+                        <span className="text-sm">{label}</span>
                       </div>
-                      <span className="font-medium">{stats.byStatus?.[key] || 0}</span>
+                      <span className="font-medium tabular-nums">{stats.byStatus?.[key] || 0}</span>
                     </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-border/50">
               <CardHeader>
                 <CardTitle>By Platform</CardTitle>
               </CardHeader>
@@ -114,8 +98,8 @@ export default function DashboardPage() {
                   {Object.entries(stats.byPlatform || {}).length > 0 ? (
                     Object.entries(stats.byPlatform).map(([platform, count]) => (
                       <div key={platform} className="flex items-center justify-between">
-                        <span className="capitalize">{platform}</span>
-                        <span className="font-medium">{count}</span>
+                        <span className="capitalize text-sm">{platform}</span>
+                        <span className="font-medium tabular-nums">{count}</span>
                       </div>
                     ))
                   ) : (

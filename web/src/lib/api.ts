@@ -124,6 +124,24 @@ export const profile = {
 
   updatePreferences: (data: any) =>
     apiFetch('/profile/preferences', { method: 'PUT', body: JSON.stringify(data) }),
+
+  uploadResume: async (file: File) => {
+    const formData = new FormData();
+    formData.append('resume', file);
+
+    const tok = getToken();
+    const res = await fetch(`${API_URL}/profile/resume/upload`, {
+      method: 'POST',
+      headers: tok ? { 'Authorization': `Bearer ${tok}` } : {},
+      body: formData, // Do NOT set Content-Type — browser sets multipart boundary
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: { message: res.statusText } }));
+      throw new ApiError(res.status, 'UPLOAD_FAILED', body.error?.message || 'Upload failed');
+    }
+    return res.json() as Promise<{ resumeUrl: string; resumeFileName: string }>;
+  },
 };
 
 // ─── Applications ───────────────────────────────────────────────────────────

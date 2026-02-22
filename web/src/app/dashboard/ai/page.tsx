@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PenLine, MessageSquare, FileText, Sparkles, Copy, Loader2 } from 'lucide-react';
 
 type Tool = 'cover-letter' | 'answer' | 'resume-optimize';
 
@@ -50,10 +51,10 @@ export default function AIAssistantPage() {
     }
   };
 
-  const tools: { key: Tool; icon: string; label: string; desc: string }[] = [
-    { key: 'cover-letter', icon: '📝', label: 'Cover Letter', desc: 'Generate a tailored cover letter' },
-    { key: 'answer', icon: '💬', label: 'Answer Question', desc: 'Answer application questions' },
-    { key: 'resume-optimize', icon: '📄', label: 'Resume Tips', desc: 'Get optimization suggestions' },
+  const tools: { key: Tool; Icon: typeof PenLine; label: string; desc: string }[] = [
+    { key: 'cover-letter', Icon: PenLine, label: 'Cover Letter', desc: 'Generate a tailored cover letter' },
+    { key: 'answer', Icon: MessageSquare, label: 'Answer Question', desc: 'Answer application questions' },
+    { key: 'resume-optimize', Icon: FileText, label: 'Resume Tips', desc: 'Get optimization suggestions' },
   ];
 
   return (
@@ -71,21 +72,23 @@ export default function AIAssistantPage() {
           <button
             key={t.key}
             onClick={() => { setTool(t.key); setResult(''); setError(''); setMeta(null); }}
-            className={`rounded-lg border p-4 text-left transition-colors ${
+            className={`rounded-lg border p-4 text-left transition-all ${
               tool === t.key
-                ? 'border-primary bg-primary/5'
-                : 'border-border hover:border-primary/40'
+                ? 'border-primary bg-primary/5 shadow-sm'
+                : 'border-border/50 hover:border-primary/40'
             }`}
           >
-            <div className="text-2xl">{t.icon}</div>
-            <div className="mt-1 font-semibold">{t.label}</div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 mb-2">
+              <t.Icon className="h-4 w-4 text-primary" />
+            </div>
+            <div className="font-semibold">{t.label}</div>
             <div className="text-sm text-muted-foreground">{t.desc}</div>
           </button>
         ))}
       </div>
 
       {/* Input */}
-      <Card>
+      <Card className="border-border/50">
         <CardHeader>
           <CardTitle>{tools.find((t) => t.key === tool)?.label}</CardTitle>
           <CardDescription>{tools.find((t) => t.key === tool)?.desc}</CardDescription>
@@ -127,30 +130,35 @@ export default function AIAssistantPage() {
           )}
 
           {error && (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+            <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
           )}
 
-          <Button onClick={generate} disabled={loading} className="w-full sm:w-auto">
-            {loading ? '⏳ Generating…' : '✨ Generate'}
+          <Button onClick={generate} disabled={loading} className="w-full sm:w-auto gap-2">
+            {loading ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Generating…</>
+            ) : (
+              <><Sparkles className="h-4 w-4" /> Generate</>
+            )}
           </Button>
         </CardContent>
       </Card>
 
       {/* Result */}
       {result && (
-        <Card>
+        <Card className="border-border/50">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Result</CardTitle>
             <Button
               variant="outline"
               size="sm"
+              className="gap-1.5"
               onClick={() => { navigator.clipboard.writeText(result); }}
             >
-              📋 Copy
+              <Copy className="h-3.5 w-3.5" /> Copy
             </Button>
           </CardHeader>
           <CardContent>
-            <div className="whitespace-pre-wrap rounded-md bg-muted p-4 text-sm leading-relaxed">
+            <div className="whitespace-pre-wrap rounded-lg bg-muted p-4 text-sm leading-relaxed">
               {result}
             </div>
             {meta && (

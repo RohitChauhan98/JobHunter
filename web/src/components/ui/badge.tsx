@@ -7,7 +7,7 @@ function Badge({ className, variant = 'default', ...props }: React.HTMLAttribute
     secondary: 'border-transparent bg-secondary text-secondary-foreground',
     destructive: 'border-transparent bg-destructive text-destructive-foreground',
     outline: 'text-foreground',
-    success: 'border-transparent bg-green-100 text-green-800',
+    success: 'border-transparent bg-green-500/15 text-green-600 dark:text-green-400',
   };
 
   return (

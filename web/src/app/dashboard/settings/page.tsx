@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Zap, Brain, Globe, Monitor, CheckCircle } from 'lucide-react';
 
 type Provider = 'openai' | 'anthropic' | 'openrouter' | 'local';
 
@@ -22,17 +23,16 @@ interface AIConfig {
   localLlmModel: string;
   temperature: number;
   maxTokens: number;
-  // Server-level fallback indicators
   serverHasOpenaiKey?: boolean;
   serverHasAnthropicKey?: boolean;
   serverHasOpenrouterKey?: boolean;
 }
 
-const PROVIDERS: { key: Provider; label: string; icon: string; description: string }[] = [
-  { key: 'openai', label: 'OpenAI', icon: '🟢', description: 'GPT-4o, GPT-4o-mini' },
-  { key: 'anthropic', label: 'Anthropic', icon: '🟠', description: 'Claude Sonnet, Haiku, Opus' },
-  { key: 'openrouter', label: 'OpenRouter', icon: '🔵', description: 'Access 100+ models via one API' },
-  { key: 'local', label: 'Local LLM', icon: '💻', description: 'Ollama, LM Studio, vLLM' },
+const PROVIDERS: { key: Provider; label: string; Icon: typeof Zap; description: string }[] = [
+  { key: 'openai', label: 'OpenAI', Icon: Zap, description: 'GPT-4o, GPT-4o-mini' },
+  { key: 'anthropic', label: 'Anthropic', Icon: Brain, description: 'Claude Sonnet, Haiku, Opus' },
+  { key: 'openrouter', label: 'OpenRouter', Icon: Globe, description: 'Access 100+ models via one API' },
+  { key: 'local', label: 'Local LLM', Icon: Monitor, description: 'Ollama, LM Studio, vLLM' },
 ];
 
 export default function SettingsPage() {
@@ -98,7 +98,7 @@ export default function SettingsPage() {
           className={`rounded-md p-3 text-sm ${
             message.startsWith('Error') || message.startsWith('❌')
               ? 'bg-destructive/10 text-destructive'
-              : 'bg-green-50 text-green-700'
+              : 'bg-green-500/10 text-green-500'
           }`}
         >
           {message}
@@ -117,17 +117,19 @@ export default function SettingsPage() {
               <button
                 key={p.key}
                 onClick={() => updateField('activeProvider', p.key)}
-                className={`relative rounded-lg border p-4 text-left transition-colors ${
+                className={`relative rounded-lg border p-4 text-left transition-all ${
                   config.activeProvider === p.key
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border hover:border-primary/40'
+                    ? 'border-primary bg-primary/5 shadow-sm'
+                    : 'border-border/50 hover:border-primary/40'
                 }`}
               >
                 {config.activeProvider === p.key && (
                   <Badge className="absolute right-2 top-2" variant="default">Active</Badge>
                 )}
-                <div className="text-2xl">{p.icon}</div>
-                <div className="mt-1 font-semibold">{p.label}</div>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 mb-2">
+                  <p.Icon className="h-4 w-4 text-primary" />
+                </div>
+                <div className="font-semibold">{p.label}</div>
                 <div className="text-xs text-muted-foreground">{p.description}</div>
               </button>
             ))}
@@ -140,7 +142,7 @@ export default function SettingsPage() {
         {/* OpenAI */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">🟢 OpenAI</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-lg"><Zap className="h-4 w-4 text-green-500" /> OpenAI</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-1">
@@ -177,7 +179,7 @@ export default function SettingsPage() {
         {/* Anthropic */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">🟠 Anthropic</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-lg"><Brain className="h-4 w-4 text-orange-500" /> Anthropic</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-1">
@@ -214,7 +216,7 @@ export default function SettingsPage() {
         {/* OpenRouter */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">🔵 OpenRouter</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-lg"><Globe className="h-4 w-4 text-blue-500" /> OpenRouter</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-1">
@@ -234,7 +236,7 @@ export default function SettingsPage() {
               <Input
                 value={config.openrouterModel}
                 onChange={(e) => updateField('openrouterModel', e.target.value)}
-                placeholder="anthropic/claude-sonnet-4-20250514"
+                placeholder="openrouter/auto (free tier compatible)"
               />
             </div>
             <Button
@@ -251,7 +253,7 @@ export default function SettingsPage() {
         {/* Local LLM */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">💻 Local LLM</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-lg"><Monitor className="h-4 w-4 text-violet-500" /> Local LLM</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-1">
