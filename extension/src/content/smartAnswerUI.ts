@@ -11,6 +11,7 @@
  */
 
 import { scrapePageContext, findQuestionFields, type QuestionContext } from './pageScraper';
+import { isContextValid } from '@/utils/messaging';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -317,8 +318,14 @@ async function handleGenerateClick(
       showStatus(statusEl, 'No answer generated', 'error');
     }
   } catch (err: any) {
-    console.error('[JobHunter] Smart answer error:', err);
-    showStatus(statusEl, err.message || 'Generation failed', 'error');
+    const msg = err?.message || '';
+    if (msg.includes('context invalidated') || msg.includes('Extension context') || !isContextValid()) {
+      console.warn('[JobHunter] Extension context invalidated — user should refresh the page.');
+      showStatus(statusEl, 'Extension was reloaded. Please refresh the page.', 'error');
+    } else {
+      console.error('[JobHunter] Smart answer error:', err);
+      showStatus(statusEl, msg || 'Generation failed', 'error');
+    }
   } finally {
     btn.disabled = false;
     btn.classList.remove('loading');
@@ -340,17 +347,38 @@ interface SmartAnswerRequest {
 }
 
 function sendSmartAnswerMessage(data: SmartAnswerRequest): Promise<any> {
+  if (!isContextValid()) {
+    return Promise.resolve({ error: 'Extension was updated or reloaded. Please refresh the page.' });
+  }
+
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage(
-      { type: 'AI_SMART_ANSWER', data },
-      (response) => {
-        if (chrome.runtime.lastError) {
-          resolve({ error: chrome.runtime.lastError.message || 'Extension communication error' });
-          return;
-        }
-        resolve(response || { error: 'No response from background' });
-      },
-    );
+    try {
+      chrome.runtime.sendMessage(
+        { type: 'AI_SMART_ANSWER', data },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            const msg = chrome.runtime.lastError.message || 'Extension communication error';
+            // Provide a friendlier message for context invalidation
+            if (msg.includes('context invalidated') || msg.includes('Extension context') || !isContextValid()) {
+              resolve({ error: 'Extension was updated or reloaded. Please refresh the page.' });
+              return;
+            }
+            resolve({ error: msg });
+            return;
+          }
+          resolve(response || { error: 'No response from background' });
+        },
+      );
+    } catch (err: any) {
+      // chrome.runtime.sendMessage throws synchronously when the context is
+      // invalidated (extension reloaded/updated while page is still open)
+      const msg = err?.message || '';
+      if (msg.includes('context invalidated') || msg.includes('Extension context') || !isContextValid()) {
+        resolve({ error: 'Extension was updated or reloaded. Please refresh the page.' });
+      } else {
+        resolve({ error: msg || 'Extension communication error' });
+      }
+    }
   });
 }
 

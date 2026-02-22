@@ -21,6 +21,7 @@
  */
 
 import type { UserProfile } from '@/types';
+import { isContextValid } from '@/utils/messaging';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -94,9 +95,11 @@ let initialized = false;
 async function ensureProfile(): Promise<UserProfile | null> {
   if (profile) return profile;
   if (profileLoading) return null;
+  if (!isContextValid()) return null;
 
   profileLoading = true;
   try {
+    if (!isContextValid()) return null;
     const response = await chrome.runtime.sendMessage({ type: 'GET_PROFILE' });
     if (response?.profile) {
       profile = response.profile;

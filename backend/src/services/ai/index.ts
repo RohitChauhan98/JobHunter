@@ -3,7 +3,7 @@ import { prisma } from '../../utils/prisma.js';
 import { AppError } from '../../utils/errors.js';
 import { env } from '../../config/index.js';
 import type { IAIProvider, AIGenerateOptions, AIGenerateResult, ProviderConfig } from './types.js';
-import { buildCoverLetterPrompt, buildAnswerPrompt, buildResumeOptimizationPrompt } from './types.js';
+import { buildCoverLetterPrompt, buildAnswerPrompt, buildSmartAnswerPrompt, buildResumeOptimizationPrompt } from './types.js';
 import { OpenAIProvider } from './openai.js';
 import { AnthropicProvider } from './anthropic.js';
 import { OpenRouterProvider } from './openrouter.js';
@@ -113,6 +113,20 @@ export async function generateCoverLetter(userId: string, jobDescription: string
 export async function generateAnswer(userId: string, question: string, context?: string): Promise<AIGenerateResult> {
   const profile = await getFullProfile(userId);
   const prompt = buildAnswerPrompt(profile, question, context);
+  return generate(userId, prompt);
+}
+
+export async function generateSmartAnswer(userId: string, data: {
+  question: string;
+  companyName?: string;
+  companyInfo?: string;
+  jobDescription?: string;
+  jobUrl?: string;
+  jobTitle?: string;
+  maxLength?: number;
+}): Promise<AIGenerateResult> {
+  const profile = await getFullProfile(userId);
+  const prompt = buildSmartAnswerPrompt(profile, data);
   return generate(userId, prompt);
 }
 

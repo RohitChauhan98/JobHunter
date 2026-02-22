@@ -181,8 +181,15 @@ async function handleMessage(
           jobUrl?: string;
           jobTitle?: string;
         };
-        const smartResult = await api.smartAnswer(smartData);
-        sendResponse({ success: true, ...smartResult });
+        try {
+          const smartResult = await api.smartAnswer(smartData);
+          sendResponse({ success: true, ...smartResult });
+        } catch (aiErr: any) {
+          // Provide a user-friendly message for common AI errors
+          const msg = aiErr?.message || 'Smart answer generation failed';
+          console.warn('[JobHunter BG] Smart answer failed:', msg);
+          sendResponse({ error: msg });
+        }
         break;
       }
 

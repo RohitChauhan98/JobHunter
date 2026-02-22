@@ -19,9 +19,10 @@
 
 import type { ExtensionMessage, FillResult, FormDetectionResult, UserProfile } from '@/types';
 import { AdapterRegistry } from '@/adapters';
+import { isContextValid } from '@/utils/messaging';
 import { fillForm, undoFill } from './formFiller';
 import { injectSmartAnswerButtons } from './smartAnswerUI';
-import { initShortcutExpander } from './shortcutExpander';
+import { initShortcutExpander, destroyShortcutExpander } from './shortcutExpander';
 
 // ---------------------------------------------------------------------------
 // State
@@ -64,13 +65,26 @@ function detectAndReport(): void {
     jobDetails: currentDetection.jobDetails,
   };
 
-  chrome.runtime.sendMessage({
-    type: 'FORM_DETECTED',
-    data: serializableResult,
-  }).catch(() => {
-    // Background service worker may not be ready yet — safe to ignore.
-    // The popup will re-request detection when opened.
-  });
+  // Guard against invalidated context (extension reloaded/updated)
+  if (!isContextValid()) {
+    console.warn('[JobHunter] Extension context invalidated — stopping activity.');
+    cleanupOnContextInvalidated();
+    return;
+  }
+
+  try {
+    chrome.runtime.sendMessage({
+      type: 'FORM_DETECTED',
+      data: serializableResult,
+    }).catch(() => {
+      // Background service worker may not be ready yet — safe to ignore.
+      // The popup will re-request detection when opened.
+    });
+  } catch {
+    // Extension context invalidated synchronously — stop all activity
+    cleanupOnContextInvalidated();
+    return;
+  }
 
   if (currentDetection.isApplicationForm) {
     console.log(
@@ -96,12 +110,16 @@ function detectAndReport(): void {
 // Message Handler
 // ---------------------------------------------------------------------------
 
-chrome.runtime.onMessage.addListener(
-  (message: ExtensionMessage, _sender, sendResponse) => {
-    handleContentMessage(message, sendResponse);
-    return true; // Keep channel open for async responses
-  },
-);
+// Only register listener if context is still valid
+if (isContextValid()) {
+  chrome.runtime.onMessage.addListener(
+    (message: ExtensionMessage, _sender, sendResponse) => {
+      if (!isContextValid()) return false;
+      handleContentMessage(message, sendResponse);
+      return true; // Keep channel open for async responses
+    },
+  );
+}
 
 async function handleContentMessage(
   message: ExtensionMessage,
@@ -125,7 +143,11 @@ async function handleContentMessage(
         lastFillResults = result.results;
 
         // Notify background / popup of the fill result
-        chrome.runtime.sendMessage({ type: 'FILL_RESULT', data: result }).catch(() => {});
+        if (isContextValid()) {
+          try {
+            chrome.runtime.sendMessage({ type: 'FILL_RESULT', data: result }).catch(() => {});
+          } catch { /* context invalidated */ }
+        }
         sendResponse({ success: true, result });
         break;
       }
@@ -133,7 +155,11 @@ async function handleContentMessage(
       case 'UNDO_FILL': {
         const restoredCount = undoFill(lastFillResults);
         lastFillResults = [];
-        chrome.runtime.sendMessage({ type: 'UNDO_RESULT', data: { restored: restoredCount } }).catch(() => {});
+        if (isContextValid()) {
+          try {
+            chrome.runtime.sendMessage({ type: 'UNDO_RESULT', data: { restored: restoredCount } }).catch(() => {});
+          } catch { /* context invalidated */ }
+        }
         sendResponse({ success: true, restored: restoredCount });
         break;
       }
@@ -155,6 +181,22 @@ async function handleContentMessage(
 // Page Lifecycle
 // ---------------------------------------------------------------------------
 
+/** MutationObserver reference for cleanup */
+let pageObserver: MutationObserver | null = null;
+
+/**
+ * Clean up all extension activity when the context is invalidated.
+ * This prevents "Extension context invalidated" errors from recurring.
+ */
+function cleanupOnContextInvalidated(): void {
+  if (pageObserver) {
+    pageObserver.disconnect();
+    pageObserver = null;
+  }
+  destroyShortcutExpander();
+  console.log('[JobHunter] Cleaned up after context invalidation. Reload the page to re-activate.');
+}
+
 /**
  * Observe DOM mutations to re-detect forms when the page dynamically loads
  * new content (common in SPAs and multi-step application forms).
@@ -162,15 +204,24 @@ async function handleContentMessage(
 function observePageChanges(): void {
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-  const observer = new MutationObserver(() => {
+  pageObserver = new MutationObserver(() => {
+    // Stop observing if the extension context has been invalidated
+    if (!isContextValid()) {
+      cleanupOnContextInvalidated();
+      return;
+    }
     // Debounce to avoid excessive re-scans on rapid DOM changes
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
-      detectAndReport();
+      if (isContextValid()) {
+        detectAndReport();
+      } else {
+        cleanupOnContextInvalidated();
+      }
     }, 1000);
   });
 
-  observer.observe(document.body, {
+  pageObserver.observe(document.body, {
     childList: true,
     subtree: true,
   });
@@ -193,6 +244,10 @@ detectAndReport();
 function retryDetectionIfNeeded(attempts: number, delay: number): void {
   if (attempts <= 0) return;
   setTimeout(() => {
+    if (!isContextValid()) {
+      cleanupOnContextInvalidated();
+      return;
+    }
     if (!currentDetection?.isApplicationForm) {
       console.log(`[JobHunter] Retrying form detection (${attempts} attempts left)...`);
       detectAndReport();

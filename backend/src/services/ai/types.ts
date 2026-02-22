@@ -88,6 +88,50 @@ Skills: ${(profile.skills || []).map((s: any) => s.name).join(', ')}
   };
 }
 
+export function buildSmartAnswerPrompt(profile: any, data: {
+  question: string;
+  companyName?: string;
+  companyInfo?: string;
+  jobDescription?: string;
+  jobUrl?: string;
+  jobTitle?: string;
+  maxLength?: number;
+}): AIGenerateOptions {
+  const charLimitNote = data.maxLength
+    ? `\nIMPORTANT: Keep your answer under ${data.maxLength} characters.`
+    : '';
+
+  const jobContext = [
+    data.companyName && `Company: ${data.companyName}`,
+    data.jobTitle && `Role: ${data.jobTitle}`,
+    data.companyInfo && `About the company: ${data.companyInfo}`,
+    data.jobDescription && `Job description: ${data.jobDescription}`,
+    data.jobUrl && `Job URL: ${data.jobUrl}`,
+  ].filter(Boolean).join('\n');
+
+  return {
+    systemPrompt: `You are helping a job applicant answer a question on a job application form.
+Be concise, professional, and authentic. Use the candidate's actual experience.
+Do not invent or exaggerate. Tailor the answer to the specific company and role.
+Do not use markdown formatting — write plain text suitable for a form textarea.
+Answer in 2-4 sentences unless the question clearly warrants more.${charLimitNote}`,
+    prompt: `Answer this job application question:
+
+"${data.question}"
+
+${jobContext ? `--- JOB CONTEXT ---\n${jobContext}\n\n` : ''}
+--- CANDIDATE PROFILE ---
+Name: ${profile.firstName} ${profile.lastName}
+Summary: ${profile.summary || 'N/A'}
+Experience:
+${(profile.experience || []).map((e: any) =>
+  `- ${e.title} at ${e.company}: ${e.description}`
+).join('\n')}
+Skills: ${(profile.skills || []).map((s: any) => s.name).join(', ')}
+`,
+  };
+}
+
 export function buildResumeOptimizationPrompt(profile: any, jobDescription: string): AIGenerateOptions {
   return {
     systemPrompt: `You are an expert resume optimizer. Suggest specific improvements to better align

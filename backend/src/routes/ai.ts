@@ -25,6 +25,16 @@ const answerSchema = z.object({
   context: z.string().optional(),
 });
 
+const smartAnswerSchema = z.object({
+  question: z.string().min(1),
+  companyName: z.string().optional(),
+  companyInfo: z.string().optional(),
+  jobDescription: z.string().optional(),
+  jobUrl: z.string().optional(),
+  jobTitle: z.string().optional(),
+  maxLength: z.number().optional(),
+});
+
 const resumeOptSchema = z.object({
   jobDescription: z.string().min(10),
 });
@@ -73,6 +83,16 @@ router.post('/cover-letter', validate(coverLetterSchema), async (req: Request, r
 router.post('/answer', validate(answerSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await aiService.generateAnswer(req.userId!, req.body.question, req.body.context);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Smart answer generation (richer context from extension)
+router.post('/smart-answer', validate(smartAnswerSchema), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await aiService.generateSmartAnswer(req.userId!, req.body);
     res.json(result);
   } catch (err) {
     next(err);
