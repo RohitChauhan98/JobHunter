@@ -275,7 +275,8 @@ async function handleGenerateClick(
 
   try {
     // Scrape page context
-    const pageContext = scrapePageContext();
+    const pageContext = scrapePageContext(q.element);
+    console.log('[JobHunter] Smart answer context:', pageContext);
 
     // Detect character limit — check the element at click-time too (may have been set dynamically)
     const maxLength = q.maxLength || detectCharLimit(q.element);

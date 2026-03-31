@@ -26,6 +26,149 @@ export interface QuestionContext {
   maxLength?: number;
 }
 
+function isVisible(el: Element | null): el is HTMLElement {
+  if (!(el instanceof HTMLElement)) return false;
+
+  const style = window.getComputedStyle(el);
+  if (style.display === 'none' || style.visibility === 'hidden') return false;
+
+  const rect = el.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
+}
+
+function queryFirstVisible(root: ParentNode, selectors: string[]): HTMLElement | null {
+  for (const selector of selectors) {
+    const matches = root.querySelectorAll(selector);
+    for (const match of matches) {
+      if (isVisible(match)) return match;
+    }
+  }
+
+  return null;
+}
+
+function extractText(el: Element | null | undefined, maxLength: number): string {
+  return el?.textContent?.replace(/\s+/g, ' ').trim().slice(0, maxLength) || '';
+}
+
+function pickLongestVisibleText(root: ParentNode, selectors: string[], minLength = 0, maxLength = 5000): string {
+  let best = '';
+
+  for (const selector of selectors) {
+    const matches = root.querySelectorAll(selector);
+
+    for (const match of matches) {
+      if (!isVisible(match)) continue;
+
+      const text = extractText(match, maxLength);
+      if (text.length >= minLength && text.length > best.length) {
+        best = text;
+      }
+    }
+  }
+
+  return best;
+}
+
+function findAncestorWithText(el: HTMLElement | null, minLength: number): HTMLElement | null {
+  let current = el?.parentElement ?? null;
+  let depth = 0;
+
+  while (current && current !== document.body && depth < 6) {
+    const text = extractText(current, 12000);
+    if (text.length >= minLength) return current;
+    current = current.parentElement;
+    depth++;
+  }
+
+  return null;
+}
+
+const WELLFOUND_TITLE_SELECTORS = [
+  '[data-test="JobDetail-title"]',
+  '[data-test*="JobDetail"][data-test*="title"]',
+  'h1[class*="title"]',
+  '[class*="job-detail"] h1',
+  '[class*="jobDetail"] h1',
+  'main h1',
+  'article h1',
+  'h1',
+];
+
+const WELLFOUND_COMPANY_SELECTORS = [
+  '[data-test="JobDetail-companyName"]',
+  '[data-test*="JobDetail"][data-test*="company"]',
+  'a[href*="/company/"]',
+  'h2[class*="company"]',
+  '[class*="company-name"]',
+  '[class*="companyName"]',
+];
+
+const WELLFOUND_DESCRIPTION_SELECTORS = [
+  '[data-test="JobDetail-description"]',
+  '[data-test*="JobDetail"][data-test*="description"]',
+  '[class*="job-description"]',
+  '[class*="jobDescription"]',
+  '[class*="listing-description"]',
+  'article',
+  'section',
+];
+
+const WELLFOUND_COMPANY_INFO_SELECTORS = [
+  '[data-test="CompanyDescription"]',
+  '[data-test*="CompanyDescription"]',
+  '[class*="company-description"]',
+  '[class*="companyDescription"]',
+  '[class*="about-company"]',
+  '[class*="aboutCompany"]',
+  '[class*="about-section"]',
+];
+
+function resolveWellfoundDetailRoot(anchor?: HTMLElement | null): HTMLElement | null {
+  if (anchor) {
+    let current: HTMLElement | null = anchor;
+    let best: HTMLElement | null = null;
+    let depth = 0;
+
+    while (current && current !== document.body && depth < 10) {
+      const hasTitle = !!queryFirstVisible(current, WELLFOUND_TITLE_SELECTORS);
+      const hasDescription = !!pickLongestVisibleText(current, WELLFOUND_DESCRIPTION_SELECTORS, 200, 5000);
+
+      if (hasTitle || hasDescription) {
+        best = current;
+      }
+
+      if (hasTitle && hasDescription) {
+        return current;
+      }
+
+      current = current.parentElement;
+      depth++;
+    }
+
+    if (best) return best;
+  }
+
+  const title = queryFirstVisible(document, [
+    '[data-test="JobDetail-title"]',
+    '[data-test*="JobDetail"][data-test*="title"]',
+    '[class*="job-detail"] h1',
+    '[class*="jobDetail"] h1',
+    'main h1',
+    'article h1',
+  ]);
+
+  if (!title) return null;
+
+  return (
+    title.closest<HTMLElement>('[data-test*="JobDetail"]') ||
+    title.closest<HTMLElement>('main') ||
+    title.closest<HTMLElement>('article') ||
+    title.closest<HTMLElement>('section') ||
+    findAncestorWithText(title, 600)
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Platform-Specific Scrapers
 // ---------------------------------------------------------------------------
@@ -77,34 +220,40 @@ function scrapeLever(): Partial<PageContext> {
   return ctx;
 }
 
-function scrapeWellfound(): Partial<PageContext> {
+function scrapeWellfoundFromAnchor(anchor?: HTMLElement | null): Partial<PageContext> {
   const ctx: Partial<PageContext> = {};
+  const detailRoot = resolveWellfoundDetailRoot(anchor) || resolveWellfoundDetailRoot() || document;
+  const detailRootEl = detailRoot instanceof HTMLElement ? detailRoot : null;
 
-  // Wellfound has the company name in multiple places
-  const companyEl = document.querySelector(
-    '[data-test="JobDetail-companyName"], h2[class*="company"], a[href*="/company/"]'
-  );
-  ctx.companyName = companyEl?.textContent?.trim() || '';
+  const titleEl = queryFirstVisible(detailRoot, WELLFOUND_TITLE_SELECTORS);
+  ctx.jobTitle = extractText(titleEl, 300);
 
-  // Job title
-  const titleEl = document.querySelector(
-    '[data-test="JobDetail-title"], h1[class*="title"], .job-listing-title'
-  );
-  ctx.jobTitle = titleEl?.textContent?.trim() || '';
+  const companyEl = queryFirstVisible(detailRoot, WELLFOUND_COMPANY_SELECTORS);
+  ctx.companyName = extractText(companyEl, 300);
 
-  // Company info / about section
-  const aboutEl = document.querySelector(
-    '[data-test="CompanyDescription"], [class*="company-description"], [class*="about-section"]'
-  );
-  ctx.companyInfo = aboutEl?.textContent?.trim().slice(0, 2000) || '';
+  ctx.companyInfo = pickLongestVisibleText(detailRoot, WELLFOUND_COMPANY_INFO_SELECTORS, 80, 2000);
+  ctx.jobDescription = pickLongestVisibleText(detailRoot, WELLFOUND_DESCRIPTION_SELECTORS, 200, 5000);
 
-  // Job description
-  const descEl = document.querySelector(
-    '[data-test="JobDetail-description"], [class*="job-description"], [class*="listing-description"]'
-  );
-  ctx.jobDescription = descEl?.textContent?.trim().slice(0, 5000) || '';
+  if (!ctx.jobDescription && detailRootEl) {
+    ctx.jobDescription = extractText(detailRootEl, 5000);
+  }
+
+  if (!ctx.companyName) {
+    ctx.companyName = extractText(queryFirstVisible(detailRoot, ['[class*="company"]', 'a[href*="/company/"]']), 300);
+  }
+
+  if (!ctx.jobTitle) {
+    ctx.jobTitle = extractText(queryFirstVisible(detailRoot, ['h1', 'h2']), 300);
+  }
 
   return ctx;
+}
+
+function shouldUseGenericFallback(url: string): boolean {
+  // Wellfound keeps job lists mounted beside the active detail pane, so global
+  // selectors often resolve to the wrong card. For this platform we rely on
+  // the scoped scraper above instead of document-wide fallbacks.
+  return !(url.includes('wellfound.com') || url.includes('angel.co'));
 }
 
 function scrapeWorkday(): Partial<PageContext> {
@@ -195,7 +344,7 @@ function scrapeGeneric(): Partial<PageContext> {
  * Auto-detects the platform and uses the appropriate scraper with
  * generic fallbacks for any missing fields.
  */
-export function scrapePageContext(): PageContext {
+export function scrapePageContext(anchor?: HTMLElement | null): PageContext {
   const url = window.location.href;
   let platformCtx: Partial<PageContext> = {};
 
@@ -204,13 +353,14 @@ export function scrapePageContext(): PageContext {
   } else if (url.includes('lever.co') || url.includes('jobs.lever')) {
     platformCtx = scrapeLever();
   } else if (url.includes('wellfound.com') || url.includes('angel.co')) {
-    platformCtx = scrapeWellfound();
+    platformCtx = scrapeWellfoundFromAnchor(anchor);
   } else if (url.includes('myworkdayjobs.com') || url.includes('workday.com')) {
     platformCtx = scrapeWorkday();
   }
 
-  // Fill gaps with generic scraper
-  const generic = scrapeGeneric();
+  // Fill gaps with generic scraper for platforms where document-wide selectors
+  // are safe enough to use.
+  const generic = shouldUseGenericFallback(url) ? scrapeGeneric() : {};
   const merged: PageContext = {
     companyName: platformCtx.companyName || generic.companyName || '',
     companyInfo: platformCtx.companyInfo || generic.companyInfo || '',

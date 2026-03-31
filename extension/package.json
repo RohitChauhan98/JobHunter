@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite build --watch --mode development",
+    "dev": "node scripts/build.mjs",
     "build": "tsc && node scripts/build.mjs",
     "lint": "eslint src/ --ext .ts,.tsx",
     "type-check": "tsc --noEmit"

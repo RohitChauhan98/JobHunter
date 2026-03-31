@@ -21,6 +21,7 @@ import nodeResolve from '@rollup/plugin-node-resolve';
 import typescript from '@rollup/plugin-typescript';
 import alias from '@rollup/plugin-alias';
 import { resolve, dirname } from 'path';
+import { mkdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -50,6 +51,7 @@ const rollupPlugins = [
 
 // ── Pass 2: Background service worker (Rollup — IIFE) ───────────────────
 console.log('\n📦 Pass 2 — Building background service worker (Rollup IIFE)…');
+mkdirSync(resolve(root, 'dist/background'), { recursive: true });
 const bgBundle = await rollup({
   input: resolve(root, 'src/background/index.ts'),
   plugins: rollupPlugins,
@@ -63,6 +65,7 @@ await bgBundle.close();
 
 // ── Pass 3: Content script (Rollup — IIFE) ──────────────────────────────
 console.log('\n📦 Pass 3 — Building content script (Rollup IIFE)…');
+mkdirSync(resolve(root, 'dist/content'), { recursive: true });
 const contentBundle = await rollup({
   input: resolve(root, 'src/content/index.ts'),
   plugins: rollupPlugins,
