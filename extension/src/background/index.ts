@@ -25,7 +25,7 @@ import type {
 } from '@/types';
 import { storage } from '@/utils/storage';
 import { DEFAULT_SETTINGS, MAX_TRACKED_APPLICATIONS } from '@/utils/constants';
-import { api } from '@/utils/api';
+import { api, ApiError } from '@/utils/api';
 
 // ---------------------------------------------------------------------------
 // Message Handler
@@ -132,10 +132,19 @@ async function handleMessage(
         try {
           const user = await api.getMe();
           sendResponse({ loggedIn: true, user });
-        } catch {
-          // Token expired or backend unreachable — clear stale token
-          await api.logout();
-          sendResponse({ loggedIn: false, user: null });
+        } catch (err) {
+          // Only clear token on auth failure — keep it on network errors
+          if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+            await api.logout();
+            sendResponse({ loggedIn: false, user: null });
+          } else {
+            const cached = await chrome.storage.local.get('backendUser');
+            sendResponse({
+              loggedIn: true,
+              user: cached.backendUser || null,
+              offline: true,
+            });
+          }
         }
         break;
       }
@@ -239,9 +248,11 @@ async function tryImportWebToken(): Promise<boolean> {
 
     const token = results?.[0]?.result;
     if (token && typeof token === 'string') {
-      await chrome.storage.local.set({ authToken: token });
-      console.log('[JobHunter] Auto-imported auth token from web dashboard');
-      return true;
+      const ok = await api.importAndVerifyToken(token);
+      if (ok) {
+        console.log('[JobHunter] Auto-imported and verified auth token from web dashboard');
+      }
+      return ok;
     }
   } catch (err) {
     // Web tab might not be accessible — that's fine
@@ -413,9 +424,17 @@ async function handleDetectFormRequest(): Promise<void> {
  */
 async function handleFillFormRequest(): Promise<void> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id) {
+    throw new Error('No active tab found');
+  }
   const { profile } = await handleGetProfile();
-  if (tab?.id && profile) {
-    chrome.tabs.sendMessage(tab.id, { type: 'FILL_FORM', data: profile });
+  if (!profile) {
+    throw new Error('No profile found. Set up your profile in the dashboard first.');
+  }
+  try {
+    await chrome.tabs.sendMessage(tab.id, { type: 'FILL_FORM', data: profile });
+  } catch {
+    throw new Error('Could not reach this page. Open a supported job application form and try again.');
   }
 }
 
@@ -424,8 +443,13 @@ async function handleFillFormRequest(): Promise<void> {
  */
 async function handleUndoRequest(): Promise<void> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (tab?.id) {
-    chrome.tabs.sendMessage(tab.id, { type: 'UNDO_FILL' });
+  if (!tab?.id) {
+    throw new Error('No active tab found');
+  }
+  try {
+    await chrome.tabs.sendMessage(tab.id, { type: 'UNDO_FILL' });
+  } catch {
+    throw new Error('Could not reach this page to undo.');
   }
 }
 

@@ -46,6 +46,7 @@ export function getFieldValue(fieldType: FieldType, profile: UserProfile): strin
     city: personalInfo.city,
     state: personalInfo.state,
     country: personalInfo.country,
+    address: [personalInfo.city, personalInfo.state, personalInfo.country].filter(Boolean).join(', '),
     linkedinUrl: personalInfo.linkedinUrl,
     githubUrl: personalInfo.githubUrl,
     portfolioUrl: personalInfo.portfolioUrl,
@@ -86,19 +87,20 @@ export function findBestDropdownOption(
   );
   if (exact) return exact.value;
 
-  // 2. Starts-with match
-  const startsWith = options.find(
-    (opt) =>
-      opt.text.toLowerCase().trim().startsWith(target) ||
-      target.startsWith(opt.text.toLowerCase().trim()),
-  );
+  // 2. Starts-with match (skip empty option labels)
+  const startsWith = options.find((opt) => {
+    const text = opt.text.toLowerCase().trim();
+    if (!text) return false;
+    return text.startsWith(target) || target.startsWith(text);
+  });
   if (startsWith) return startsWith.value;
 
-  // 3. Substring match
-  const substring = options.find(
-    (opt) =>
-      opt.text.toLowerCase().includes(target) || target.includes(opt.text.toLowerCase().trim()),
-  );
+  // 3. Substring match (prefer longer option text to reduce "India"→"Indiana" style misses slightly)
+  const substring = options.find((opt) => {
+    const text = opt.text.toLowerCase().trim();
+    if (!text) return false;
+    return text.includes(target) || target.includes(text);
+  });
   if (substring) return substring.value;
 
   return null;
@@ -137,8 +139,8 @@ function formatSalary(
   max: number | null,
   currency: string,
 ): string {
-  if (min && max) return `${currency} ${min.toLocaleString()} - ${max.toLocaleString()}`;
-  if (min) return `${currency} ${min.toLocaleString()}`;
-  if (max) return `${currency} ${max.toLocaleString()}`;
+  if (min != null && max != null) return `${currency} ${min.toLocaleString()} - ${max.toLocaleString()}`;
+  if (min != null) return `${currency} ${min.toLocaleString()}`;
+  if (max != null) return `${currency} ${max.toLocaleString()}`;
   return '';
 }

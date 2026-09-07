@@ -1,14 +1,22 @@
 'use client';
 
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { profile as profileApi } from '@/lib/api';
+import { profile as profileApi, getApiOrigin } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { safeHttpUrl } from '@/lib/utils';
 
+function resolveAssetUrl(raw: string | null | undefined): string | null {
+    if (!raw) return null;
+    if (raw.startsWith('/')) {
+        return `${getApiOrigin()}${raw}`;
+    }
+    return safeHttpUrl(raw);
+}
 // ─── Skills Suggestion Database ─────────────────────────────────────────────
 
 const SKILL_SUGGESTIONS: Record<string, string[]> = {
@@ -396,13 +404,17 @@ export default function ProfilePage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [tab, setTab] = useState<'personal' | 'experience' | 'education' | 'skills' | 'resume' | 'preview'>('personal');
 
     useEffect(() => {
         profileApi
             .get()
-            .then(setData)
-            .catch(() => { })
+            .then((profile) => {
+                setData(profile);
+                setLoadError(null);
+            })
+            .catch((err: any) => setLoadError(err.message || 'Failed to load profile'))
             .finally(() => setLoading(false));
     }, []);
 
@@ -602,25 +614,27 @@ export default function ProfilePage() {
     // ─── Render ───────────────────────────────────────────────────────────────
 
     if (loading) return <div className="animate-pulse text-muted-foreground">Loading profile...</div>;
+    if (loadError) return <p className="text-destructive">{loadError}</p>;
+    if (!data) return <p className="text-muted-foreground">Unable to load profile.</p>;
 
     const tabs = [
-        { key: 'personal', label: '👤 Personal' },
-        { key: 'experience', label: '💼 Experience' },
-        { key: 'education', label: '🎓 Education' },
-        { key: 'skills', label: '🛠 Skills' },
-        { key: 'resume', label: '📄 Resume' },
-        { key: 'preview', label: '👁 Preview' },
+        { key: 'personal', label: 'Personal' },
+        { key: 'experience', label: 'Experience' },
+        { key: 'education', label: 'Education' },
+        { key: 'skills', label: 'Skills' },
+        { key: 'resume', label: 'Resume' },
+        { key: 'preview', label: 'Preview' },
     ] as const;
 
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-3xl font-bold">Profile</h1>
+                <h1 className="font-display text-3xl font-semibold tracking-tight">Profile</h1>
                 <p className="text-muted-foreground">Manage your personal information for auto-filling applications</p>
             </div>
 
             {message && (
-                <div className={`rounded-lg p-3 text-sm ${message.startsWith('Error') ? 'bg-destructive/10 text-destructive' : 'bg-green-500/10 text-green-500'}`}>
+                <div className={`rounded-lg p-3 text-sm ${message.startsWith('Error') ? 'bg-destructive/10 text-destructive' : 'bg-forest/10 text-forest'}`}>
                     {message}
                 </div>
             )}
@@ -1021,9 +1035,9 @@ export default function ProfilePage() {
                                     <p className="font-medium truncate">{data.resumeFileName}</p>
                                     <p className="text-xs text-muted-foreground">Currently uploaded</p>
                                 </div>
-                                {data?.resumeUrl && (
+                                {data?.resumeUrl && resolveAssetUrl(data.resumeUrl) && (
                                     <a
-                                        href={data.resumeUrl.startsWith('/') ? `http://localhost:4000${data.resumeUrl}` : data.resumeUrl}
+                                        href={resolveAssetUrl(data.resumeUrl)!}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-sm text-primary underline hover:no-underline"
@@ -1145,12 +1159,12 @@ function ProfilePreview({ data }: { data: any }) {
     return (
         <div className="space-y-6 max-w-3xl">
             {/* Header / Hero */}
-            <div className="relative overflow-hidden rounded-xl border bg-gradient-to-br from-primary/5 via-background to-primary/10">
-                <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-primary/5 -translate-y-32 translate-x-32" />
+            <div className="relative overflow-hidden rounded-lg border border-border bg-card">
+                <div className="absolute top-0 right-0 w-64 h-64 -translate-y-32 translate-x-32 bg-forest/5" />
                 <div className="relative p-8">
                     <div className="flex items-start gap-6">
                         {/* Avatar placeholder */}
-                        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-primary/10 text-3xl font-bold text-primary">
+                        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded bg-forest/10 font-display text-3xl font-semibold text-forest">
                             {data.firstName?.[0]?.toUpperCase() || '?'}{data.lastName?.[0]?.toUpperCase() || ''}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -1176,23 +1190,23 @@ function ProfilePreview({ data }: { data: any }) {
                                         <span>📱</span> {data.phone}
                                     </span>
                                 )}
-                                {data.linkedinUrl && (
-                                    <a href={data.linkedinUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline transition-colors">
+                                {safeHttpUrl(data.linkedinUrl) && (
+                                    <a href={safeHttpUrl(data.linkedinUrl)!} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline transition-colors">
                                         <span>💼</span> LinkedIn
                                     </a>
                                 )}
-                                {data.githubUrl && (
-                                    <a href={data.githubUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
+                                {safeHttpUrl(data.githubUrl) && (
+                                    <a href={safeHttpUrl(data.githubUrl)!} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
                                         <span>🐙</span> GitHub
                                     </a>
                                 )}
-                                {data.portfolioUrl && (
-                                    <a href={data.portfolioUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
+                                {safeHttpUrl(data.portfolioUrl) && (
+                                    <a href={safeHttpUrl(data.portfolioUrl)!} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
                                         <span>🌐</span> Portfolio
                                     </a>
                                 )}
-                                {data.website && (
-                                    <a href={data.website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
+                                {safeHttpUrl(data.website) && (
+                                    <a href={safeHttpUrl(data.website)!} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
                                         <span>🔗</span> Website
                                     </a>
                                 )}
@@ -1211,7 +1225,7 @@ function ProfilePreview({ data }: { data: any }) {
             {(data.experience?.length > 0) && (
                 <div className="rounded-xl border p-6">
                     <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/15 text-blue-500 text-sm">💼</span>
+                        <span className="flex h-8 w-8 items-center justify-center rounded bg-forest/10 text-sm font-semibold text-forest">Ex</span>
                         Work Experience
                     </h3>
                     <div className="space-y-0">
@@ -1260,13 +1274,13 @@ function ProfilePreview({ data }: { data: any }) {
             {(data.education?.length > 0) && (
                 <div className="rounded-xl border p-6">
                     <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/15 text-purple-500 text-sm">🎓</span>
+                        <span className="flex h-8 w-8 items-center justify-center rounded bg-forest/10 text-sm font-semibold text-forest">Ed</span>
                         Education
                     </h3>
                     <div className="space-y-4">
                         {data.education.map((edu: any) => (
                             <div key={edu.id} className="flex gap-4">
-                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-500/10 text-purple-500 text-lg font-bold">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-forest/10 font-display text-lg font-semibold text-forest">
                                     {edu.institution?.[0]?.toUpperCase() || '?'}
                                 </div>
                                 <div>
@@ -1303,15 +1317,15 @@ function ProfilePreview({ data }: { data: any }) {
                                     <div className="flex flex-wrap gap-2">
                                         {catSkills.map((skill: any) => {
                                             const colors: Record<string, string> = {
-                                                expert: 'bg-green-500/15 text-green-600 dark:text-green-400 border-green-500/20',
-                                                advanced: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/20',
-                                                intermediate: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20',
+                                                expert: 'bg-forest/15 text-forest border-forest/20',
+                                                advanced: 'bg-forest/10 text-forest-mid border-forest/15',
+                                                intermediate: 'bg-citrus/25 text-forest border-forest/15',
                                                 beginner: 'bg-muted text-muted-foreground border-border',
                                             };
                                             return (
                                                 <span
                                                     key={skill.id || skill.name}
-                                                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${colors[skill.proficiency] || colors.intermediate}`}
+                                                    className={`inline-flex items-center gap-1 rounded border px-2.5 py-1 text-xs font-medium ${colors[skill.proficiency] || colors.intermediate}`}
                                                 >
                                                     {skill.name}
                                                     <span className="opacity-60">
@@ -1341,9 +1355,9 @@ function ProfilePreview({ data }: { data: any }) {
                         <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-500/10 text-2xl">📄</div>
                         <div>
                             <p className="font-medium">{data.resumeFileName || 'Resume'}</p>
-                            {data.resumeUrl && (
+                            {data.resumeUrl && resolveAssetUrl(data.resumeUrl) && (
                                 <a
-                                    href={data.resumeUrl.startsWith('/') ? `http://localhost:4000${data.resumeUrl}` : data.resumeUrl}
+                                    href={resolveAssetUrl(data.resumeUrl)!}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-xs text-primary hover:underline"

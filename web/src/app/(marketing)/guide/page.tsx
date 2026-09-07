@@ -13,7 +13,6 @@ import {
   Check,
   ChevronRight,
   ExternalLink,
-  MonitorSmartphone,
 } from 'lucide-react';
 
 import { AnimatedSection } from '@/components/marketing/AnimatedSection';
@@ -68,22 +67,16 @@ export default function GuidePage() {
   return (
     <>
       {/* Hero */}
-      <section className="relative pt-32 pb-16 overflow-hidden">
-        <div className="absolute inset-0 bg-slate-950" />
-        <div className="absolute inset-0 dot-grid opacity-40" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-600/10 rounded-full blur-[120px]" />
-
-        <div className="relative z-10 max-w-4xl mx-auto px-6">
+      <section className="pt-32 pb-16">
+        <div className="max-w-4xl mx-auto px-6">
           <AnimatedSection>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-sm font-medium mb-6">
-              <MonitorSmartphone className="w-3.5 h-3.5" />
-              Step-by-Step Guide
-            </div>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight mb-4">
-              Get Started with{' '}
-              <span className="gradient-text">JobHunter</span>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-forest">
+              Step-by-step guide
+            </p>
+            <h1 className="font-display text-4xl sm:text-5xl font-semibold tracking-tight mb-4">
+              Get started with JobHunter
             </h1>
-            <p className="text-slate-400 text-lg max-w-2xl leading-relaxed">
+            <p className="text-muted-foreground text-lg max-w-2xl leading-relaxed">
               Everything you need to know to set up your profile, configure AI,
               and start generating smart answers on any job application.
             </p>
@@ -97,7 +90,7 @@ export default function GuidePage() {
           {/* Sidebar TOC (sticky, desktop only) */}
           <aside className="hidden lg:block w-64 flex-shrink-0">
             <div className="sticky top-24">
-              <p className="text-xs font-bold tracking-wider text-slate-500 uppercase mb-4">
+              <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-4">
                 On this page
               </p>
               <nav className="space-y-1">
@@ -105,9 +98,9 @@ export default function GuidePage() {
                   <a
                     key={item.id}
                     href={`#${item.id}`}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-white/5 transition-colors group"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors group"
                   >
-                    <item.icon className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition-colors" />
+                    <item.icon className="w-4 h-4 text-muted-foreground group-hover:text-forest transition-colors" />
                     {item.label}
                   </a>
                 ))}
@@ -124,7 +117,7 @@ export default function GuidePage() {
               <Step n={1}>
                 <p>
                   Visit the{' '}
-                  <a href="#" className="text-indigo-400 hover:underline">
+                  <a href="#" className="text-forest hover:underline">
                     Chrome Web Store listing
                   </a>{' '}
                   for JobHunter (or load the unpacked extension from the GitHub
@@ -133,14 +126,14 @@ export default function GuidePage() {
               </Step>
               <Step n={2}>
                 <p>
-                  Click <strong className="text-white">Add to Chrome</strong>{' '}
+                  Click <strong className="text-foreground">Add to Chrome</strong>{' '}
                   and confirm the permissions dialog.
                 </p>
               </Step>
               <Step n={3}>
                 <p>
                   The JobHunter icon (
-                  <Sparkles className="inline w-4 h-4 text-indigo-400" />) will
+                  <Sparkles className="inline w-4 h-4 text-forest" />) will
                   appear in your browser toolbar. Click it to open the popup.
                 </p>
               </Step>
@@ -152,11 +145,11 @@ export default function GuidePage() {
               </Step>
               <InfoBox>
                 <strong>Developer Mode:</strong> To load unpacked, go to{' '}
-                <code className="text-indigo-300 bg-indigo-500/10 px-1.5 py-0.5 rounded text-xs">
+                <code className="text-forest bg-secondary px-1.5 py-0.5 rounded text-xs font-mono">
                   chrome://extensions
                 </code>
                 , enable Developer Mode, click &quot;Load unpacked&quot;, and select the{' '}
-                <code className="text-indigo-300 bg-indigo-500/10 px-1.5 py-0.5 rounded text-xs">
+                <code className="text-forest bg-secondary px-1.5 py-0.5 rounded text-xs font-mono">
                   extension/dist
                 </code>{' '}
                 folder.
@@ -170,9 +163,9 @@ export default function GuidePage() {
               <Step n={1}>
                 <p>
                   Open the extension popup and click{' '}
-                  <strong className="text-white">Login / Register</strong>, or
+                  <strong className="text-foreground">Login / Register</strong>, or
                   visit the{' '}
-                  <Link href="/register" className="text-indigo-400 hover:underline">
+                  <Link href="/register" className="text-forest hover:underline">
                     registration page
                   </Link>{' '}
                   directly.
@@ -193,40 +186,40 @@ export default function GuidePage() {
             {/* 3. Profile                                            */}
             {/* ---------------------------------------------------- */}
             <GuideSection id="profile" title="Set Up Your Profile" icon={Settings}>
-              <p className="text-slate-400 leading-relaxed mb-6">
+              <p className="text-muted-foreground leading-relaxed mb-6">
                 A complete profile is the foundation for great AI answers. The
                 more context you provide, the better the generated responses.
               </p>
 
               <H4>Personal Information</H4>
-              <p className="text-slate-400 text-sm leading-relaxed mb-4">
+              <p className="text-muted-foreground text-sm leading-relaxed mb-4">
                 Fill in your name, email, phone, location, and social links
                 (LinkedIn, GitHub, portfolio). These are also used by
                 @shortcuts.
               </p>
 
               <H4>Work Experience</H4>
-              <p className="text-slate-400 text-sm leading-relaxed mb-4">
+              <p className="text-muted-foreground text-sm leading-relaxed mb-4">
                 Add your work history with company name, title, dates, and
                 bullet-point descriptions. The AI uses these to craft
                 experience-specific answers.
               </p>
 
               <H4>Education</H4>
-              <p className="text-slate-400 text-sm leading-relaxed mb-4">
+              <p className="text-muted-foreground text-sm leading-relaxed mb-4">
                 Add degrees, institutions, graduation dates, and relevant
                 coursework or achievements.
               </p>
 
               <H4>Skills</H4>
-              <p className="text-slate-400 text-sm leading-relaxed mb-4">
+              <p className="text-muted-foreground text-sm leading-relaxed mb-4">
                 Use the autocomplete skills input to add technical and soft
                 skills. The AI references these when answering &quot;what skills do
                 you bring&quot; type questions.
               </p>
 
               <H4>Custom Q&A</H4>
-              <p className="text-slate-400 text-sm leading-relaxed mb-4">
+              <p className="text-muted-foreground text-sm leading-relaxed mb-4">
                 Pre-write answers to common questions like &quot;Why are you
                 looking for a new role?&quot; or &quot;What&apos;s your biggest
                 weakness?&quot;. The AI uses TF-IDF matching to find the most
@@ -244,7 +237,7 @@ export default function GuidePage() {
             {/* 4. AI Setup                                           */}
             {/* ---------------------------------------------------- */}
             <GuideSection id="ai-setup" title="Configure AI Provider" icon={Sparkles}>
-              <p className="text-slate-400 leading-relaxed mb-6">
+              <p className="text-muted-foreground leading-relaxed mb-6">
                 JobHunter supports multiple AI providers. Choose the one that
                 works best for you:
               </p>
@@ -254,25 +247,25 @@ export default function GuidePage() {
                   name="OpenRouter (Recommended)"
                   description="Aggregates 100+ models including free tier options. Best for getting started — no credit card required."
                   badge="Free Tier Available"
-                  badgeColor="bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                  badgeColor="bg-emerald-500/10 text-forest border-emerald-500/20"
                 />
                 <ProviderCard
                   name="OpenAI"
                   description="GPT-4o and GPT-4o-mini. Reliable and fast. Requires an API key with billing enabled."
                   badge="Paid"
-                  badgeColor="bg-blue-500/10 text-blue-400 border-blue-500/20"
+                  badgeColor="bg-secondary text-muted-foreground border-border"
                 />
                 <ProviderCard
                   name="Anthropic"
                   description="Claude Sonnet and Haiku models. Excellent at following formatting instructions."
                   badge="Paid"
-                  badgeColor="bg-purple-500/10 text-purple-400 border-purple-500/20"
+                  badgeColor="bg-secondary text-muted-foreground border-border"
                 />
                 <ProviderCard
                   name="Local LLM (Ollama)"
                   description="Run models locally for complete privacy. Requires Ollama installed and running."
                   badge="Free / Self-hosted"
-                  badgeColor="bg-amber-500/10 text-amber-400 border-amber-500/20"
+                  badgeColor="bg-citrus/30 text-forest border-forest/20"
                 />
               </div>
 
@@ -303,8 +296,8 @@ export default function GuidePage() {
               <Step n={2}>
                 <p>
                   JobHunter automatically detects text fields and injects a{' '}
-                  <span className="inline-flex items-center gap-1 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xs font-semibold px-2.5 py-1 rounded-md">
-                    ✨ Generate Answer
+                  <span className="inline-flex items-center gap-1 bg-forest text-citrus text-xs font-semibold px-2.5 py-1 rounded">
+                    Generate Answer
                   </span>{' '}
                   button next to each question.
                 </p>
@@ -342,10 +335,10 @@ export default function GuidePage() {
             {/* 6. Shortcuts                                          */}
             {/* ---------------------------------------------------- */}
             <GuideSection id="shortcuts" title="Using @Shortcuts" icon={Keyboard}>
-              <p className="text-slate-400 leading-relaxed mb-6">
+              <p className="text-muted-foreground leading-relaxed mb-6">
                 The @shortcut system lets you instantly fill any input field
                 with data from your profile — no AI needed. Just type{' '}
-                <code className="text-indigo-300 bg-indigo-500/10 px-1.5 py-0.5 rounded text-xs">
+                <code className="text-forest bg-secondary px-1.5 py-0.5 rounded text-xs font-mono">
                   @
                 </code>{' '}
                 to trigger the dropdown.
@@ -358,14 +351,14 @@ export default function GuidePage() {
               </Step>
               <Step n={2}>
                 <p>
-                  Type <span className="text-indigo-400 font-mono font-bold">@</span>.
+                  Type <span className="text-forest font-mono font-bold">@</span>.
                   A floating dropdown appears with all available shortcuts.
                 </p>
               </Step>
               <Step n={3}>
                 <p>
                   Type to filter (e.g.,{' '}
-                  <code className="text-indigo-300 bg-indigo-500/10 px-1.5 py-0.5 rounded text-xs">
+                  <code className="text-forest bg-secondary px-1.5 py-0.5 rounded text-xs font-mono">
                     @lin
                   </code>{' '}
                   shows @linkedin), or use ↑↓ arrow keys to navigate.
@@ -373,7 +366,7 @@ export default function GuidePage() {
               </Step>
               <Step n={4}>
                 <p>
-                  Press <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-xs text-white">Enter</kbd> or
+                  Press <kbd className="bg-secondary px-1.5 py-0.5 rounded text-xs text-foreground">Enter</kbd> or
                   click to insert the value. The @ text is replaced with the
                   actual data.
                 </p>
@@ -384,12 +377,12 @@ export default function GuidePage() {
                 {shortcutsList.map((s) => (
                   <div
                     key={s.cmd}
-                    className="flex items-center justify-between bg-white/[0.02] border border-white/5 rounded-lg px-3 py-2"
+                    className="flex items-center justify-between bg-card border border-border rounded px-3 py-2"
                   >
-                    <code className="text-indigo-400 font-mono text-sm font-medium">
+                    <code className="text-forest font-mono text-sm font-medium">
                       {s.cmd}
                     </code>
-                    <span className="text-slate-500 text-xs">{s.desc}</span>
+                    <span className="text-muted-foreground text-xs">{s.desc}</span>
                   </div>
                 ))}
               </div>
@@ -401,7 +394,7 @@ export default function GuidePage() {
             <GuideSection id="resume" title="Resume Management" icon={FileText}>
               <Step n={1}>
                 <p>
-                  Go to the <strong className="text-white">Resume</strong> tab
+                  Go to the <strong className="text-foreground">Resume</strong> tab
                   in your dashboard profile page.
                 </p>
               </Step>
@@ -429,7 +422,7 @@ export default function GuidePage() {
             {/* 8. Dashboard                                          */}
             {/* ---------------------------------------------------- */}
             <GuideSection id="dashboard" title="Dashboard Overview" icon={LayoutDashboard}>
-              <p className="text-slate-400 leading-relaxed mb-6">
+              <p className="text-muted-foreground leading-relaxed mb-6">
                 The web dashboard is your command center for managing
                 everything:
               </p>
@@ -439,19 +432,19 @@ export default function GuidePage() {
                   { label: 'Profile', desc: 'Personal info, experience, education, skills — 6 organized tabs' },
                   { label: 'Q&A Library', desc: 'Save and manage custom question-answer pairs for AI context' },
                   { label: 'Resume', desc: 'Upload, view, and manage your resume files' },
-                  { label: 'Profile Preview', desc: 'See how your profile looks with a beautiful gradient card' },
+                  { label: 'Profile Preview', desc: 'See how your profile looks at a glance' },
                   { label: 'Settings', desc: 'Configure AI provider, API keys, and extension preferences' },
                 ].map((item) => (
                   <div
                     key={item.label}
-                    className="flex items-start gap-3 bg-white/[0.02] border border-white/5 rounded-lg p-3"
+                    className="flex items-start gap-3 bg-card border border-border rounded p-3"
                   >
-                    <Check className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <Check className="w-4 h-4 text-forest mt-0.5 flex-shrink-0" />
                     <div>
-                      <span className="text-white text-sm font-medium">
+                      <span className="text-foreground text-sm font-medium">
                         {item.label}
                       </span>
-                      <p className="text-slate-500 text-xs mt-0.5">
+                      <p className="text-muted-foreground text-xs mt-0.5">
                         {item.desc}
                       </p>
                     </div>
@@ -462,7 +455,7 @@ export default function GuidePage() {
               <div className="flex gap-4">
                 <Link
                   href="/dashboard"
-                  className="inline-flex items-center gap-2 text-indigo-400 hover:text-indigo-300 text-sm font-medium"
+                  className="inline-flex items-center gap-2 text-forest hover:text-forest-mid text-sm font-medium"
                 >
                   Open Dashboard
                   <ExternalLink className="w-3.5 h-3.5" />
@@ -503,13 +496,13 @@ export default function GuidePage() {
                 ].map((tip) => (
                   <div
                     key={tip.title}
-                    className="glass-card rounded-xl p-5 group hover:scale-[1.01] transition-transform"
+                    className="border border-border bg-card rounded-lg p-5"
                   >
-                    <h4 className="text-white font-medium text-sm mb-1 flex items-center gap-2">
-                      <Lightbulb className="w-4 h-4 text-amber-400" />
+                    <h4 className="text-foreground font-medium text-sm mb-1 flex items-center gap-2">
+                      <Lightbulb className="w-4 h-4 text-forest" />
                       {tip.title}
                     </h4>
-                    <p className="text-slate-400 text-sm leading-relaxed pl-6">
+                    <p className="text-muted-foreground text-sm leading-relaxed pl-6">
                       {tip.body}
                     </p>
                   </div>
@@ -519,16 +512,16 @@ export default function GuidePage() {
 
             {/* Bottom CTA */}
             <AnimatedSection className="mt-16 text-center">
-              <div className="glass-card rounded-2xl p-10">
-                <h3 className="text-2xl font-bold text-white mb-3">
+              <div className="border border-border bg-card rounded-lg p-10">
+                <h3 className="font-display text-2xl font-semibold text-foreground mb-3">
                   Ready to start?
                 </h3>
-                <p className="text-slate-400 mb-6">
+                <p className="text-muted-foreground mb-6">
                   Install the extension and land your next interview faster.
                 </p>
                 <Link
                   href="/guide#installation"
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold px-6 py-3 rounded-full hover:shadow-lg hover:shadow-indigo-500/25 transition-all"
+                  className="inline-flex items-center gap-2 bg-forest text-citrus font-semibold px-6 py-3 rounded hover:bg-forest-mid transition-colors"
                 >
                   <Sparkles className="w-4 h-4" />
                   Install JobHunter
@@ -564,13 +557,13 @@ function GuideSection({
     <AnimatedSection>
       <section
         id={id}
-        className={`scroll-mt-24 ${last ? '' : 'mb-16 pb-16 border-b border-white/5'}`}
+        className={`scroll-mt-24 ${last ? '' : 'mb-16 pb-16 border-b border-border'}`}
       >
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <Icon className="w-5 h-5 text-white" />
+          <div className="w-10 h-10 rounded bg-forest flex items-center justify-center text-citrus">
+            <Icon className="w-5 h-5" />
           </div>
-          <h2 className="text-2xl font-bold text-white">{title}</h2>
+          <h2 className="font-display text-2xl font-semibold text-foreground">{title}</h2>
         </div>
         {children}
       </section>
@@ -581,10 +574,10 @@ function GuideSection({
 function Step({ n, children }: { n: number; children: React.ReactNode }) {
   return (
     <div className="flex gap-4 mb-4">
-      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center">
-        <span className="text-indigo-400 text-xs font-bold">{n}</span>
+      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-forest/10 border border-forest/30 flex items-center justify-center">
+        <span className="text-forest text-xs font-bold">{n}</span>
       </div>
-      <div className="text-slate-300 text-sm leading-relaxed pt-0.5">
+      <div className="text-foreground/80 text-sm leading-relaxed pt-0.5">
         {children}
       </div>
     </div>
@@ -593,7 +586,7 @@ function Step({ n, children }: { n: number; children: React.ReactNode }) {
 
 function InfoBox({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mt-4 mb-6 bg-indigo-500/5 border border-indigo-500/15 rounded-xl p-4 text-sm text-slate-300 leading-relaxed">
+    <div className="mt-4 mb-6 bg-secondary border border-border rounded-lg p-4 text-sm text-foreground/80 leading-relaxed">
       {children}
     </div>
   );
@@ -601,8 +594,8 @@ function InfoBox({ children }: { children: React.ReactNode }) {
 
 function H4({ children }: { children: React.ReactNode }) {
   return (
-    <h4 className="text-white font-semibold text-sm mt-6 mb-2 flex items-center gap-1.5">
-      <ChevronRight className="w-4 h-4 text-indigo-400" />
+    <h4 className="text-foreground font-semibold text-sm mt-6 mb-2 flex items-center gap-1.5">
+      <ChevronRight className="w-4 h-4 text-forest" />
       {children}
     </h4>
   );
@@ -620,16 +613,16 @@ function ProviderCard({
   badgeColor: string;
 }) {
   return (
-    <div className="glass-card rounded-xl p-4 hover:scale-[1.01] transition-transform">
+    <div className="border border-border bg-card rounded-lg p-4">
       <div className="flex items-start justify-between gap-3 mb-1.5">
-        <h4 className="text-white font-medium text-sm">{name}</h4>
+        <h4 className="text-foreground font-medium text-sm">{name}</h4>
         <span
-          className={`text-xs font-medium px-2 py-0.5 rounded-full border ${badgeColor}`}
+          className={`text-xs font-medium px-2 py-0.5 rounded border ${badgeColor}`}
         >
           {badge}
         </span>
       </div>
-      <p className="text-slate-400 text-xs leading-relaxed">{description}</p>
+      <p className="text-muted-foreground text-xs leading-relaxed">{description}</p>
     </div>
   );
 }

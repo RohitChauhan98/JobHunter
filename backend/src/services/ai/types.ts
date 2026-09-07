@@ -20,6 +20,8 @@ export interface IAIProvider {
   readonly name: AIProvider;
   generate(options: AIGenerateOptions, config: ProviderConfig): Promise<AIGenerateResult>;
   isAvailable(config: ProviderConfig): boolean;
+  /** Return available model IDs for the provider (used by settings UI dropdowns). */
+  listModels?(config: ProviderConfig): Promise<string[]>;
 }
 
 export interface ProviderConfig {
@@ -32,9 +34,18 @@ export interface ProviderConfig {
   // OpenRouter
   openrouterApiKey?: string;
   openrouterModel?: string;
-  // Local LLM
+  // GLM (Z.ai)
+  glmApiKey?: string;
+  glmModel?: string;
+  glmBaseUrl?: string;
+  // Ollama
+  ollamaUrl?: string;
+  ollamaModel?: string;
+  ollamaApiKey?: string;
+  // Local LLM (OpenAI-compatible: LM Studio, vLLM, …)
   localLlmUrl?: string;
   localLlmModel?: string;
+  localLlmApiKey?: string;
   // Shared
   temperature?: number;
   maxTokens?: number;

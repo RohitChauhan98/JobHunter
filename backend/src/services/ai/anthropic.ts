@@ -31,4 +31,16 @@ export class AnthropicProvider implements IAIProvider {
       tokensUsed: response.usage.input_tokens + response.usage.output_tokens,
     };
   }
+
+  // Anthropic has no public list-models endpoint — return the current lineup.
+  async listModels(): Promise<string[]> {
+    return [
+      'claude-opus-4-1-20250805',
+      'claude-sonnet-4-5-20250929',
+      'claude-sonnet-4-20250514',
+      'claude-haiku-4-5-20251001',
+      'claude-3-7-sonnet-20250219',
+      'claude-3-5-haiku-20241022',
+    ];
+  }
 }

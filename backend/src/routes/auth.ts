@@ -2,9 +2,12 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 import { z } from 'zod';
 import { validate } from '../middleware/validate.js';
 import { authenticate } from '../middleware/auth.js';
+import { rateLimit } from '../middleware/rateLimit.js';
 import * as authService from '../services/auth.js';
 
 const router = Router();
+
+const authAttemptLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
 
 // ─── Schemas ────────────────────────────────────────────────────────────────
 
@@ -22,6 +25,7 @@ const loginSchema = z.object({
 
 router.post(
   '/register',
+  authAttemptLimit,
   validate(registerSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -36,6 +40,7 @@ router.post(
 
 router.post(
   '/login',
+  authAttemptLimit,
   validate(loginSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {

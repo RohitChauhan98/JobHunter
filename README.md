@@ -8,6 +8,12 @@
 
 ---
 
+## 📖 Handbook
+
+New to the codebase? Start with **[HANDBOOK.md](./HANDBOOK.md)** — how the three packages connect, data model, API map, extension adapters, and “where to look when…”.
+
+---
+
 ## 📋 Overview
 
 In today's competitive job market, candidates apply to hundreds of positions — filling out the same forms, answering the same questions, and manually tailoring responses over and over. **JobHunter** eliminates this friction with:
@@ -126,6 +132,12 @@ ANTHROPIC_API_KEY=sk-ant-...
 OPENROUTER_API_KEY=sk-or-...
 LOCAL_LLM_URL=http://localhost:11434
 LOCAL_LLM_MODEL=llama3
+
+# Razorpay (optional in local — checkout errors clearly if unset)
+# https://dashboard.razorpay.com/app/keys
+RAZORPAY_KEY_ID=rzp_test_xxxxxxxx
+RAZORPAY_KEY_SECRET=your_razorpay_key_secret
+RAZORPAY_WEBHOOK_SECRET=
 ```
 
 ### 3. Set Up the Database
@@ -151,7 +163,18 @@ npm run dev:backend
 
 # Web Dashboard (http://localhost:3000)
 npm run dev:web
+```
 
+### Razorpay billing
+
+Plans (INR): **Free** (25 AI gens/mo) · **Pro** ₹299/mo or ₹2,999/yr · **Lifetime** ₹4,999.  
+Donations accepted on `/donate`. Dashboard billing is at `/dashboard/billing`.
+
+1. Create a Razorpay account and copy **Test** key id + secret into `backend/.env`
+2. Run `npx prisma db push` so `Subscription` / `Payment` / `UsageCounter` tables exist
+3. Optional webhook: `POST /api/billing/webhook` with events `payment.captured`, `payment.failed` and set `RAZORPAY_WEBHOOK_SECRET`
+
+```bash
 # Extension (watch mode — outputs to extension/dist)
 npm run dev:extension
 ```

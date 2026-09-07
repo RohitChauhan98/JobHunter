@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { safeHttpUrl } from '@/lib/utils';
 
 interface Application {
   id: string;
@@ -52,8 +53,11 @@ export default function ApplicationsPage() {
   const [form, setForm] = useState({ jobTitle: '', company: '', platform: '', jobUrl: '', notes: '' });
   const [saving, setSaving] = useState(false);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const fetchApps = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const result = await appsApi.list({
         page,
@@ -62,8 +66,8 @@ export default function ApplicationsPage() {
         status: filterStatus || undefined,
       });
       setData(result);
-    } catch {
-      // ignore
+    } catch (err: any) {
+      setLoadError(err.message || 'Failed to load applications');
     } finally {
       setLoading(false);
     }
@@ -116,7 +120,7 @@ export default function ApplicationsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Applications</h1>
+          <h1 className="font-display text-3xl font-semibold tracking-tight">Applications</h1>
           <p className="text-muted-foreground">Track and manage all your job applications</p>
         </div>
         <Button onClick={() => setShowAdd(!showAdd)}>{showAdd ? 'Cancel' : '+ Add Application'}</Button>
@@ -207,6 +211,8 @@ export default function ApplicationsPage() {
       {/* List */}
       {loading ? (
         <div className="animate-pulse text-muted-foreground">Loading…</div>
+      ) : loadError ? (
+        <p className="text-destructive">{loadError}</p>
       ) : !data || data.items.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
@@ -249,10 +255,11 @@ export default function ApplicationsPage() {
                     ))}
                   </select>
                   <a
-                    href={app.jobUrl}
+                    href={safeHttpUrl(app.jobUrl) || undefined}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-primary hover:underline"
+                    className={`text-sm text-primary hover:underline ${!safeHttpUrl(app.jobUrl) ? 'pointer-events-none opacity-50' : ''}`}
+                    aria-disabled={!safeHttpUrl(app.jobUrl)}
                   >
                     Open
                   </a>

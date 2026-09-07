@@ -2,7 +2,7 @@
 // Database: NeonDB (serverless PostgreSQL)
 //
 // Models:
-//   User          – Auth credentials
+//   User          – Auth credentials + billing plan
 //   Profile       – Personal info (1:1 with User)
 //   WorkExperience – Job history
 //   Education     – Degrees
@@ -11,6 +11,9 @@
 //   JobPreference – Target roles, locations, salary
 //   Application   – Tracked job applications
 //   AIConfig      – Per-user AI provider settings
+//   Subscription  – Plan purchases (Razorpay)
+//   Payment       – Orders / donations (Razorpay)
+//   UsageCounter  – Soft free-tier quotas
 // ────────────────────────────────────────────────────────────────────────────
 
 generator client {
@@ -31,9 +34,114 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile      Profile?
-  applications Application[]
-  aiConfig     AIConfig?
+  // Billing
+  plan               PlanTier         @default(free)
+  planInterval       BillingInterval  @default(none)
+  planExpiresAt      DateTime?
+  razorpayCustomerId String?
+
+  profile       Profile?
+  applications  Application[]
+  aiConfig      AIConfig?
+  subscriptions Subscription[]
+  payments      Payment[]
+  usageCounters UsageCounter[]
+}
+
+enum PlanTier {
+  free
+  pro
+  lifetime
+}
+
+enum BillingInterval {
+  none
+  monthly
+  yearly
+  lifetime
+  donation
+}
+
+enum SubscriptionStatus {
+  created
+  pending
+  active
+  past_due
+  cancelled
+  expired
+}
+
+enum PaymentType {
+  subscription
+  donation
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  refunded
+}
+
+model Subscription {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  plan     PlanTier
+  interval BillingInterval
+  status   SubscriptionStatus @default(created)
+
+  razorpayOrderId        String? @unique
+  razorpaySubscriptionId String? @unique
+  razorpayPaymentId      String?
+
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  cancelledAt        DateTime?
+
+  amount   Int // paise
+  currency String @default("INR")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, status])
+}
+
+model Payment {
+  id     String  @id @default(cuid())
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  type   PaymentType
+  status PaymentStatus @default(pending)
+
+  amount   Int // paise
+  currency String  @default("INR")
+  planId   String? // our plan key, e.g. pro_monthly
+  message  String? // optional donor note / email for guests
+
+  razorpayOrderId   String  @unique
+  razorpayPaymentId String?
+  razorpaySignature String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model UsageCounter {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  key    String // e.g. "ai_generations"
+  period String // e.g. "2026-08"
+  count  Int    @default(0)
+
+  @@unique([userId, key, period])
 }
 
 // ─── Profile ────────────────────────────────────────────────────────────────
@@ -203,6 +311,15 @@ model AIConfig {
 
   localLlmUrl       String @default("http://localhost:11434")
   localLlmModel     String @default("llama3")
+  localLlmApiKey    String @default("")
+
+  ollamaUrl    String @default("http://localhost:11434")
+  ollamaModel  String @default("llama3")
+  ollamaApiKey String @default("")
+
+  glmApiKey    String @default("")
+  glmModel     String @default("glm-4.6")
+  glmBaseUrl   String @default("https://api.z.ai/api/paas/v4")
 
   // Generation settings
   temperature Float @default(0.7)
@@ -215,5 +332,7 @@ enum AIProvider {
   openai
   anthropic
   openrouter
+  glm
+  ollama
   local
 }

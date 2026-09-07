@@ -75,17 +75,18 @@ export async function setSkills(userId: string, skills: { name: string; category
   const profile = await prisma.profile.findUnique({ where: { userId }, select: { id: true } });
   if (!profile) throw AppError.notFound('Profile not found');
 
-  // Delete existing and replace
-  await prisma.skill.deleteMany({ where: { profileId: profile.id } });
-
-  const created = await prisma.skill.createMany({
-    data: skills.map((s) => ({
-      profileId: profile.id,
-      name: s.name,
-      category: s.category as any,
-      proficiency: s.proficiency as any,
-    })),
-  });
+  // Atomic replace — avoids empty skill set if createMany fails after delete
+  const [, created] = await prisma.$transaction([
+    prisma.skill.deleteMany({ where: { profileId: profile.id } }),
+    prisma.skill.createMany({
+      data: skills.map((s) => ({
+        profileId: profile.id,
+        name: s.name,
+        category: s.category as any,
+        proficiency: s.proficiency as any,
+      })),
+    }),
+  ]);
   return created;
 }
 

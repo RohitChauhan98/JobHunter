@@ -133,7 +133,28 @@ function Popup() {
       return;
     }
     setState((prev) => ({ ...prev, fillInProgress: true, lastFillMessage: null }));
-    await sendMessage({ type: 'FILL_FORM' });
+    try {
+      const result = await Promise.race([
+        sendMessage<{ success?: boolean; error?: string }>({ type: 'FILL_FORM' }),
+        new Promise<{ error: string }>((resolve) =>
+          setTimeout(() => resolve({ error: 'Fill timed out. Is a job application form open?' }), 15000),
+        ),
+      ]);
+      if (result.error) {
+        setState((prev) => ({
+          ...prev,
+          fillInProgress: false,
+          lastFillMessage: result.error || 'Fill failed',
+        }));
+      }
+      // Success path: FILL_RESULT message clears the spinner
+    } catch (err) {
+      setState((prev) => ({
+        ...prev,
+        fillInProgress: false,
+        lastFillMessage: (err as Error).message || 'Fill failed',
+      }));
+    }
   };
 
   const handleUndo = async () => {

@@ -11,19 +11,17 @@ export default function PrivacyPage() {
   return (
     <>
       {/* Hero */}
-      <section className="relative pt-32 pb-12 overflow-hidden">
-        <div className="absolute inset-0 bg-slate-950" />
-        <div className="absolute inset-0 dot-grid opacity-30" />
-        <div className="relative z-10 max-w-3xl mx-auto px-6">
+      <section className="pt-32 pb-12">
+        <div className="max-w-3xl mx-auto px-6">
           <AnimatedSection>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-sm font-medium mb-6">
+            <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-forest mb-6">
               <Shield className="w-3.5 h-3.5" />
               Last updated: February 2026
             </div>
-            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">
+            <h1 className="font-display text-4xl sm:text-5xl font-semibold tracking-tight mb-4">
               Privacy Policy
             </h1>
-            <p className="text-slate-400 text-lg">
+            <p className="text-muted-foreground text-lg">
               Your privacy matters. Here&apos;s how JobHunter handles your data.
             </p>
           </AnimatedSection>
@@ -33,7 +31,7 @@ export default function PrivacyPage() {
       {/* Content */}
       <section className="relative pb-28">
         <div className="max-w-3xl mx-auto px-6">
-          <div className="prose-invert space-y-10">
+          <div className="space-y-10">
             <PolicySection title="1. Overview">
               <p>
                 JobHunter is a free, open-source Chrome extension and web
@@ -105,17 +103,17 @@ export default function PrivacyPage() {
               </p>
               <ul>
                 <li>
-                  <a href="https://openai.com/privacy" className="text-indigo-400 hover:underline" target="_blank" rel="noopener noreferrer">
+                  <a href="https://openai.com/privacy" className="text-forest hover:underline" target="_blank" rel="noopener noreferrer">
                     OpenAI Privacy Policy
                   </a>
                 </li>
                 <li>
-                  <a href="https://www.anthropic.com/privacy" className="text-indigo-400 hover:underline" target="_blank" rel="noopener noreferrer">
+                  <a href="https://www.anthropic.com/privacy" className="text-forest hover:underline" target="_blank" rel="noopener noreferrer">
                     Anthropic Privacy Policy
                   </a>
                 </li>
                 <li>
-                  <a href="https://openrouter.ai/privacy" className="text-indigo-400 hover:underline" target="_blank" rel="noopener noreferrer">
+                  <a href="https://openrouter.ai/privacy" className="text-forest hover:underline" target="_blank" rel="noopener noreferrer">
                     OpenRouter Privacy Policy
                   </a>
                 </li>
@@ -192,8 +190,8 @@ function PolicySection({
   return (
     <AnimatedSection>
       <div>
-        <h2 className="text-xl font-bold text-white mb-4">{title}</h2>
-        <div className="text-slate-400 text-sm leading-relaxed space-y-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-2 [&_strong]:text-slate-200">
+        <h2 className="font-display text-xl font-semibold text-foreground mb-4">{title}</h2>
+        <div className="text-muted-foreground text-sm leading-relaxed space-y-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-2 [&_strong]:text-foreground">
           {children}
         </div>
       </div>

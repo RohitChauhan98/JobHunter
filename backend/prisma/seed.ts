@@ -17,6 +17,10 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Refusing to run seed in production (NODE_ENV=production)');
+  }
+
   const email = 'rohit@jobhunter.dev';
   const password = 'password123';
   const hash = await bcrypt.hash(password, 12);

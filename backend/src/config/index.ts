@@ -18,8 +18,14 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),
+  GLM_API_KEY: z.string().optional(),
   LOCAL_LLM_URL: z.string().default('http://localhost:11434'),
   LOCAL_LLM_MODEL: z.string().default('llama3'),
+
+  // Razorpay (optional in local/dev — checkout returns a clear error if unset)
+  RAZORPAY_KEY_ID: z.string().optional(),
+  RAZORPAY_KEY_SECRET: z.string().optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

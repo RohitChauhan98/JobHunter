@@ -17,8 +17,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="animate-pulse text-lg text-muted-foreground">Loading...</div>
+      <div className="paper-texture flex min-h-screen items-center justify-center">
+        <div className="animate-pulse text-sm text-muted-foreground">Loading…</div>
       </div>
     );
   }
@@ -26,7 +26,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return null;
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="paper-texture flex min-h-screen">
       <Sidebar />
       <main className="flex-1 overflow-y-auto p-8">{children}</main>
     </div>

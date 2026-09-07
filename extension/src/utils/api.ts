@@ -11,11 +11,37 @@
 
 const DEFAULT_API_URL = 'http://localhost:4000/api';
 
+/** Allowed API base URLs — prevents sending the Bearer token to arbitrary hosts. */
+const ALLOWED_API_ORIGINS = new Set([
+  'http://localhost:4000',
+  'http://127.0.0.1:4000',
+]);
+
+function isAllowedApiBase(baseUrl: string): boolean {
+  try {
+    const url = new URL(baseUrl.endsWith('/api') ? baseUrl : `${baseUrl.replace(/\/+$/, '')}/api`);
+    const origin = url.origin;
+    if (ALLOWED_API_ORIGINS.has(origin)) return true;
+    // Allow https production hosts if explicitly configured later via env-like storage
+    if (url.protocol === 'https:' && url.pathname.replace(/\/+$/, '') === '/api') return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 // ─── Token / Config ─────────────────────────────────────────────────────────
 
 async function getApiUrl(): Promise<string> {
   const result = await chrome.storage.local.get('backendUrl');
-  return result.backendUrl || DEFAULT_API_URL;
+  const configured = result.backendUrl as string | undefined;
+  if (configured && isAllowedApiBase(configured)) {
+    return configured.replace(/\/+$/, '');
+  }
+  if (configured && !isAllowedApiBase(configured)) {
+    console.warn('[JobHunter] Ignoring disallowed backendUrl:', configured);
+  }
+  return DEFAULT_API_URL;
 }
 
 async function getAuthToken(): Promise<string | null> {
@@ -65,7 +91,12 @@ async function apiFetch<T = any>(path: string, options: RequestInit & { params?:
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(url, { ...init, headers });
+  let res: Response;
+  try {
+    res = await fetch(url, { ...init, headers });
+  } catch {
+    throw new ApiError(0, 'NETWORK', 'Unable to reach the server. Check your connection.');
+  }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: { message: res.statusText, code: 'UNKNOWN' } }));
@@ -114,6 +145,23 @@ export const api = {
     return !!token;
   },
 
+  /** Persist a token only after verifying it with /auth/me. */
+  async importAndVerifyToken(token: string): Promise<boolean> {
+    await setAuthToken(token);
+    try {
+      const user = await this.getMe();
+      await chrome.storage.local.set({ backendUser: user });
+      return true;
+    } catch (err) {
+      await this.logout();
+      if (err instanceof ApiError && err.status === 0) {
+        // Network error during verify — don't keep an unverified token
+        console.warn('[JobHunter] Could not verify imported token (network)');
+      }
+      return false;
+    }
+  },
+
   // Profile
   async getProfile() {
     return apiFetch('/profile');
@@ -124,7 +172,6 @@ export const api = {
   },
 
   async syncProfileToBackend(profile: any) {
-    // Map extension profile shape → backend shape
     const personal = profile.personalInfo || {};
     await this.updateProfile({
       firstName: personal.firstName,

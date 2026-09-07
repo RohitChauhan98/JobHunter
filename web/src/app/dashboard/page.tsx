@@ -15,20 +15,24 @@ interface Stats {
 export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     applications
       .stats()
-      .then(setStats)
-      .catch(() => {})
+      .then((data) => {
+        setStats(data);
+        setError(null);
+      })
+      .catch((err: any) => setError(err.message || 'Failed to load stats'))
       .finally(() => setLoading(false));
   }, []);
 
   const statusLabels: Record<string, { label: string; dotColor: string }> = {
     draft: { label: 'Draft', dotColor: 'bg-muted-foreground' },
-    submitted: { label: 'Submitted', dotColor: 'bg-primary' },
-    interview: { label: 'Interview', dotColor: 'bg-yellow-500' },
-    offer: { label: 'Offer', dotColor: 'bg-green-500' },
+    submitted: { label: 'Submitted', dotColor: 'bg-forest' },
+    interview: { label: 'Interview', dotColor: 'bg-citrus' },
+    offer: { label: 'Offer', dotColor: 'bg-forest-mid' },
     rejected: { label: 'Rejected', dotColor: 'bg-destructive' },
     withdrawn: { label: 'Withdrawn', dotColor: 'bg-muted-foreground' },
   };
@@ -36,41 +40,43 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Overview of your job application activity</p>
+        <h1 className="font-display text-3xl font-semibold tracking-tight">Dashboard</h1>
+        <p className="mt-1 text-muted-foreground">Overview of your job application activity</p>
       </div>
 
       {loading ? (
-        <div className="animate-pulse text-muted-foreground">Loading stats...</div>
+        <div className="animate-pulse text-muted-foreground">Loading stats…</div>
+      ) : error ? (
+        <p className="text-destructive">{error}</p>
       ) : !stats ? (
         <p className="text-muted-foreground">No data yet. Start tracking your applications!</p>
       ) : (
         <>
-          {/* Summary Cards */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { label: 'Total Applications', value: stats.total, icon: FileText, color: 'text-primary' },
-              { label: 'This Week', value: stats.thisWeek, icon: TrendingUp, color: 'text-primary' },
-              { label: 'Interviews', value: stats.byStatus?.interview || 0, icon: MessageSquare, color: 'text-yellow-500' },
-              { label: 'Offers', value: stats.byStatus?.offer || 0, icon: Trophy, color: 'text-green-500' },
+              { label: 'Total Applications', value: stats.total, icon: FileText },
+              { label: 'This Week', value: stats.thisWeek, icon: TrendingUp },
+              { label: 'Interviews', value: stats.byStatus?.interview || 0, icon: MessageSquare },
+              { label: 'Offers', value: stats.byStatus?.offer || 0, icon: Trophy },
             ].map((item) => (
-              <Card key={item.label} className="border-border/50">
+              <Card key={item.label}>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                  <CardTitle className="text-sm font-medium text-muted-foreground font-sans">
                     {item.label}
                   </CardTitle>
-                  <item.icon className={`h-4 w-4 ${item.color}`} />
+                  <item.icon className="h-4 w-4 text-forest" />
                 </CardHeader>
                 <CardContent>
-                  <div className={`text-3xl font-bold ${item.color}`}>{item.value}</div>
+                  <div className="font-display text-3xl font-semibold text-foreground">
+                    {item.value}
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
 
-          {/* Status & Platform Breakdown */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <Card className="border-border/50">
+            <Card>
               <CardHeader>
                 <CardTitle>By Status</CardTitle>
               </CardHeader>
@@ -89,7 +95,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-border/50">
+            <Card>
               <CardHeader>
                 <CardTitle>By Platform</CardTitle>
               </CardHeader>

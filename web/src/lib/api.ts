@@ -1,8 +1,19 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
+/** API origin without the `/api` suffix (e.g. for resume file links). */
+export function getApiOrigin(): string {
+  return API_URL.replace(/\/api\/?$/, '');
+}
+
 // ─── Token Management ───────────────────────────────────────────────────────
 
 let token: string | null = null;
+let onUnauthorized: (() => void) | null = null;
+
+/** Register a callback invoked when any API call receives 401. */
+export function setOnUnauthorized(cb: (() => void) | null) {
+  onUnauthorized = cb;
+}
 
 export function setToken(t: string | null) {
   token = t;
@@ -41,7 +52,6 @@ export class ApiError extends Error {
 async function apiFetch<T = any>(path: string, options: FetchOptions = {}): Promise<T> {
   const { params, ...init } = options;
 
-  // Build URL with query params
   let url = `${API_URL}${path}`;
   if (params) {
     const searchParams = new URLSearchParams();
@@ -53,19 +63,30 @@ async function apiFetch<T = any>(path: string, options: FetchOptions = {}): Prom
   }
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...(init.headers as Record<string, string>),
   };
+  if (init.body !== undefined) {
+    headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+  }
 
   const tok = getToken();
   if (tok) {
     headers['Authorization'] = `Bearer ${tok}`;
   }
 
-  const res = await fetch(url, { ...init, headers });
+  let res: Response;
+  try {
+    res = await fetch(url, { ...init, headers });
+  } catch {
+    throw new ApiError(0, 'NETWORK', 'Unable to reach the server. Check your connection.');
+  }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: { message: res.statusText, code: 'UNKNOWN' } }));
+    if (res.status === 401) {
+      setToken(null);
+      onUnauthorized?.();
+    }
     throw new ApiError(res.status, body.error?.code || 'UNKNOWN', body.error?.message || res.statusText);
   }
 
@@ -88,7 +109,17 @@ export const auth = {
       body: JSON.stringify({ email, password }),
     }),
 
-  me: () => apiFetch<{ id: string; email: string; createdAt: string }>('/auth/me'),
+  me: () =>
+    apiFetch<{
+      id: string;
+      email: string;
+      createdAt: string;
+      plan?: string;
+      planInterval?: string;
+      planExpiresAt?: string | null;
+      planName?: string;
+      isPaid?: boolean;
+    }>('/auth/me'),
 };
 
 // ─── Profile ────────────────────────────────────────────────────────────────
@@ -130,14 +161,23 @@ export const profile = {
     formData.append('resume', file);
 
     const tok = getToken();
-    const res = await fetch(`${API_URL}/profile/resume/upload`, {
-      method: 'POST',
-      headers: tok ? { 'Authorization': `Bearer ${tok}` } : {},
-      body: formData, // Do NOT set Content-Type — browser sets multipart boundary
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${API_URL}/profile/resume/upload`, {
+        method: 'POST',
+        headers: tok ? { Authorization: `Bearer ${tok}` } : {},
+        body: formData,
+      });
+    } catch {
+      throw new ApiError(0, 'NETWORK', 'Unable to reach the server. Check your connection.');
+    }
 
     if (!res.ok) {
       const body = await res.json().catch(() => ({ error: { message: res.statusText } }));
+      if (res.status === 401) {
+        setToken(null);
+        onUnauthorized?.();
+      }
       throw new ApiError(res.status, 'UPLOAD_FAILED', body.error?.message || 'Upload failed');
     }
     return res.json() as Promise<{ resumeUrl: string; resumeFileName: string }>;
@@ -174,4 +214,107 @@ export const ai = {
     apiFetch('/ai/config', { method: 'PUT', body: JSON.stringify(data) }),
   testConnection: (provider?: string) =>
     apiFetch('/ai/test-connection', { method: 'POST', body: JSON.stringify({ provider }) }),
+  listModels: (provider: string) => apiFetch(`/ai/models/${provider}`),
+};
+
+// ─── Billing / Razorpay ─────────────────────────────────────────────────────
+
+export interface BillingPlan {
+  id: string;
+  name: string;
+  description: string;
+  amount: number;
+  amountDisplay: string;
+  currency: string;
+  interval: string;
+  tier: string;
+  popular: boolean;
+  features: string[];
+  limits: { aiGenerationsPerMonth: number | null };
+}
+
+export interface DonationPreset {
+  id: string;
+  label: string;
+  amount: number;
+  amountDisplay: string;
+  description: string;
+  popular: boolean;
+}
+
+export interface BillingStatus {
+  plan: string;
+  planInterval: string;
+  planExpiresAt: string | null;
+  planName: string;
+  isPaid: boolean;
+  razorpayConfigured: boolean;
+  keyId: string | null;
+  usage: {
+    aiGenerations: { used: number; limit: number | null; period: string };
+  };
+  payments: Array<{
+    id: string;
+    type: string;
+    amount: number;
+    currency: string;
+    planId: string | null;
+    createdAt: string;
+    razorpayPaymentId: string | null;
+  }>;
+}
+
+export interface CheckoutSession {
+  orderId: string;
+  amount: number;
+  currency: string;
+  keyId: string;
+  planId?: string;
+  planName?: string;
+  prefill?: { email?: string };
+}
+
+export const billing = {
+  plans: () =>
+    apiFetch<{
+      currency: string;
+      razorpayConfigured: boolean;
+      keyId: string | null;
+      plans: BillingPlan[];
+      donations: DonationPreset[];
+    }>('/billing/plans'),
+
+  status: () => apiFetch<BillingStatus>('/billing/status'),
+
+  checkout: (planId: string) =>
+    apiFetch<CheckoutSession>('/billing/checkout', {
+      method: 'POST',
+      body: JSON.stringify({ planId }),
+    }),
+
+  verify: (data: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+  }) =>
+    apiFetch<BillingStatus>('/billing/verify', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  donate: (data: { amount: number; email?: string; message?: string }) =>
+    apiFetch<CheckoutSession>('/billing/donate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  verifyDonate: (data: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+  }) =>
+    apiFetch<{ ok: boolean; amount: number; amountDisplay: string }>('/billing/donate/verify', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };

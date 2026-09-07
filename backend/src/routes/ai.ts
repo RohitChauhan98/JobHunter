@@ -2,59 +2,80 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 import { z } from 'zod';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
+import { rateLimit } from '../middleware/rateLimit.js';
 import * as aiService from '../services/ai/index.js';
+import * as billing from '../services/billing/index.js';
 
 const router = Router();
 router.use(authenticate);
+router.use(rateLimit({ windowMs: 60 * 1000, max: 30 }));
+
+/** Check free-tier AI quota, then record usage after a successful generation. */
+async function withAiQuota(
+  userId: string,
+  run: () => Promise<unknown>,
+): Promise<unknown> {
+  await billing.assertAiAllowance(userId);
+  const result = await run();
+  await billing.recordAiUsage(userId);
+  return result;
+}
 
 // ─── Schemas ────────────────────────────────────────────────────────────────
 
 const generateSchema = z.object({
-  prompt: z.string().min(1),
-  systemPrompt: z.string().optional(),
+  prompt: z.string().min(1).max(20_000),
+  systemPrompt: z.string().max(10_000).optional(),
   temperature: z.number().min(0).max(2).optional(),
   maxTokens: z.number().min(1).max(8192).optional(),
 });
 
 const coverLetterSchema = z.object({
-  jobDescription: z.string().min(10, 'Job description is required'),
+  jobDescription: z.string().min(10, 'Job description is required').max(50_000),
 });
 
 const answerSchema = z.object({
-  question: z.string().min(1),
-  context: z.string().optional(),
+  question: z.string().min(1).max(5_000),
+  context: z.string().max(20_000).optional(),
 });
 
 const smartAnswerSchema = z.object({
-  question: z.string().min(1),
-  companyName: z.string().optional(),
-  companyInfo: z.string().optional(),
-  jobDescription: z.string().optional(),
-  jobUrl: z.string().optional(),
-  jobTitle: z.string().optional(),
-  maxLength: z.number().optional(),
+  question: z.string().min(1).max(5_000),
+  companyName: z.string().max(500).optional(),
+  companyInfo: z.string().max(20_000).optional(),
+  jobDescription: z.string().max(50_000).optional(),
+  jobUrl: z.string().max(2_000).optional(),
+  jobTitle: z.string().max(500).optional(),
+  maxLength: z.number().int().positive().max(5_000).optional(),
 });
 
 const resumeOptSchema = z.object({
-  jobDescription: z.string().min(10),
+  jobDescription: z.string().min(10).max(50_000),
 });
 
 const updateConfigSchema = z.object({
-  activeProvider: z.enum(['openai', 'anthropic', 'openrouter', 'local']).optional(),
-  openaiApiKey: z.string().optional(),
-  openaiModel: z.string().optional(),
-  anthropicApiKey: z.string().optional(),
-  anthropicModel: z.string().optional(),
-  openrouterApiKey: z.string().optional(),
-  openrouterModel: z.string().optional(),
-  localLlmUrl: z.string().optional(),
-  localLlmModel: z.string().optional(),
+  activeProvider: z.enum(['openai', 'anthropic', 'openrouter', 'glm', 'ollama', 'local']).optional(),
+  openaiApiKey: z.string().max(500).optional(),
+  openaiModel: z.string().max(200).optional(),
+  anthropicApiKey: z.string().max(500).optional(),
+  anthropicModel: z.string().max(200).optional(),
+  openrouterApiKey: z.string().max(500).optional(),
+  openrouterModel: z.string().max(200).optional(),
+  localLlmUrl: z.string().max(500).optional(),
+  localLlmModel: z.string().max(200).optional(),
+  localLlmApiKey: z.string().max(500).optional(),
+  ollamaUrl: z.string().max(500).optional(),
+  ollamaModel: z.string().max(200).optional(),
+  ollamaApiKey: z.string().max(500).optional(),
+  glmApiKey: z.string().max(500).optional(),
+  glmModel: z.string().max(200).optional(),
+  glmBaseUrl: z.string().max(500).optional(),
   temperature: z.number().min(0).max(2).optional(),
   maxTokens: z.number().min(1).max(8192).optional(),
 });
 
 const testConnectionSchema = z.object({
-  provider: z.enum(['openai', 'anthropic', 'openrouter', 'local']).optional(),
+  provider: z.enum(['openai', 'anthropic', 'openrouter', 'glm', 'ollama', 'local']).optional(),
 });
 
 // ─── Routes ─────────────────────────────────────────────────────────────────
@@ -62,7 +83,7 @@ const testConnectionSchema = z.object({
 // Raw generation
 router.post('/generate', validate(generateSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await aiService.generate(req.userId!, req.body);
+    const result = await withAiQuota(req.userId!, () => aiService.generate(req.userId!, req.body));
     res.json(result);
   } catch (err) {
     next(err);
@@ -72,7 +93,9 @@ router.post('/generate', validate(generateSchema), async (req: Request, res: Res
 // Cover letter generation
 router.post('/cover-letter', validate(coverLetterSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await aiService.generateCoverLetter(req.userId!, req.body.jobDescription);
+    const result = await withAiQuota(req.userId!, () =>
+      aiService.generateCoverLetter(req.userId!, req.body.jobDescription),
+    );
     res.json(result);
   } catch (err) {
     next(err);
@@ -82,7 +105,9 @@ router.post('/cover-letter', validate(coverLetterSchema), async (req: Request, r
 // Answer generation
 router.post('/answer', validate(answerSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await aiService.generateAnswer(req.userId!, req.body.question, req.body.context);
+    const result = await withAiQuota(req.userId!, () =>
+      aiService.generateAnswer(req.userId!, req.body.question, req.body.context),
+    );
     res.json(result);
   } catch (err) {
     next(err);
@@ -92,7 +117,9 @@ router.post('/answer', validate(answerSchema), async (req: Request, res: Respons
 // Smart answer generation (richer context from extension)
 router.post('/smart-answer', validate(smartAnswerSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await aiService.generateSmartAnswer(req.userId!, req.body);
+    const result = await withAiQuota(req.userId!, () =>
+      aiService.generateSmartAnswer(req.userId!, req.body),
+    );
     res.json(result);
   } catch (err) {
     next(err);
@@ -102,7 +129,9 @@ router.post('/smart-answer', validate(smartAnswerSchema), async (req: Request, r
 // Resume optimization
 router.post('/resume-optimize', validate(resumeOptSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await aiService.generateResumeOptimization(req.userId!, req.body.jobDescription);
+    const result = await withAiQuota(req.userId!, () =>
+      aiService.generateResumeOptimization(req.userId!, req.body.jobDescription),
+    );
     res.json(result);
   } catch (err) {
     next(err);
@@ -123,6 +152,17 @@ router.put('/config', validate(updateConfigSchema), async (req: Request, res: Re
   try {
     const config = await aiService.updateAIConfig(req.userId!, req.body);
     res.json(config);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// List available models for a provider (dropdown in settings UI)
+router.get('/models/:provider', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const provider = z.enum(['openai', 'anthropic', 'openrouter', 'glm', 'ollama', 'local']).parse(req.params.provider);
+    const models = await aiService.listModels(req.userId!, provider);
+    res.json({ models });
   } catch (err) {
     next(err);
   }

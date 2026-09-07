@@ -1,4 +1,6 @@
-import type { Metadata } from 'next';
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   Heart,
@@ -6,51 +8,25 @@ import {
   Github,
   Star,
   ArrowRight,
-  Sparkles,
   Server,
   Code2,
   Rocket,
   Users,
+  Loader2,
 } from 'lucide-react';
 
 import { AnimatedSection } from '@/components/marketing/AnimatedSection';
+import { billing as billingApi, type DonationPreset, ApiError } from '@/lib/api';
+import { openRazorpayCheckout } from '@/lib/razorpay';
+import { useAuth } from '@/lib/auth';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
-export const metadata: Metadata = {
-  title: 'Support Us — JobHunter',
-  description:
-    'JobHunter is free and open source. If it has helped you, consider supporting its development.',
-};
-
-const tiers = [
-  {
-    icon: Coffee,
-    emoji: '☕',
-    name: 'Buy a Coffee',
-    amount: '$5',
-    description: 'A small thank-you that keeps us caffeinated and coding.',
-    color: 'from-amber-500 to-orange-500',
-    link: '#',
-  },
-  {
-    icon: Heart,
-    emoji: '💜',
-    name: 'Supporter',
-    amount: '$15',
-    description: 'Help cover server costs and keep the service running for everyone.',
-    color: 'from-pink-500 to-rose-500',
-    link: '#',
-    popular: true,
-  },
-  {
-    icon: Rocket,
-    emoji: '🚀',
-    name: 'Champion',
-    amount: '$50',
-    description: 'Fund a major feature or improvement. Your name on the supporters wall.',
-    color: 'from-indigo-500 to-purple-600',
-    link: '#',
-  },
-];
+const ICONS = {
+  coffee: Coffee,
+  supporter: Heart,
+  champion: Rocket,
+} as const;
 
 const whatFunds = [
   {
@@ -76,212 +52,283 @@ const whatFunds = [
 ];
 
 export default function DonatePage() {
+  const { user } = useAuth();
+  const [tiers, setTiers] = useState<DonationPreset[]>([]);
+  const [configured, setConfigured] = useState(true);
+  const [customAmount, setCustomAmount] = useState('');
+  const [email, setEmail] = useState('');
+  const [paying, setPaying] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
+  const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    billingApi
+      .plans()
+      .then((data) => {
+        setTiers(data.donations);
+        setConfigured(data.razorpayConfigured);
+      })
+      .catch((err: Error) => setMessage(err.message));
+  }, []);
+
+  useEffect(() => {
+    if (user?.email) setEmail(user.email);
+  }, [user?.email]);
+
+  const donate = async (amountPaise: number, label: string) => {
+    setMessage('');
+    setSuccess('');
+    if (!configured) {
+      setMessage('Donations are not configured yet. Add Razorpay keys on the server.');
+      return;
+    }
+    if (!user && !email.trim()) {
+      setMessage('Enter your email so we can send a receipt.');
+      return;
+    }
+
+    setPaying(label);
+    try {
+      const session = await billingApi.donate({
+        amount: amountPaise,
+        email: email.trim() || undefined,
+      });
+      const result = await openRazorpayCheckout({
+        keyId: session.keyId,
+        orderId: session.orderId,
+        amount: session.amount,
+        currency: session.currency,
+        description: `Support JobHunter — ${label}`,
+        prefill: { email: email.trim() || session.prefill?.email },
+      });
+      const verified = await billingApi.verifyDonate(result);
+      setSuccess(`Thank you! Your ${verified.amountDisplay} donation was received.`);
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message === 'Payment cancelled') {
+        // no-op
+      } else if (err instanceof ApiError || err instanceof Error) {
+        setMessage(err.message);
+      } else {
+        setMessage('Donation failed');
+      }
+    } finally {
+      setPaying(null);
+    }
+  };
+
+  const onCustom = () => {
+    const rupees = Number(customAmount);
+    if (!Number.isFinite(rupees) || rupees < 10 || rupees > 100_000) {
+      setMessage('Enter an amount between ₹10 and ₹100,000.');
+      return;
+    }
+    void donate(Math.round(rupees * 100), `₹${rupees}`);
+  };
+
   return (
     <>
-      {/* Hero */}
-      <section className="relative pt-32 pb-20 overflow-hidden">
-        <div className="absolute inset-0 bg-slate-950" />
-        <div className="absolute inset-0 dot-grid opacity-40" />
-        <div className="absolute top-1/3 left-1/4 w-96 h-96 bg-pink-600/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-indigo-600/10 rounded-full blur-[100px]" />
-
-        <div className="relative z-10 max-w-3xl mx-auto px-6 text-center">
+      <section className="pt-32 pb-16">
+        <div className="mx-auto max-w-3xl px-6">
           <AnimatedSection>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-pink-500/10 border border-pink-500/20 text-pink-300 text-sm font-medium mb-6">
-              <Heart className="w-3.5 h-3.5" />
-              100% Optional — Always Free to Use
-            </div>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight mb-4">
-              Support{' '}
-              <span className="gradient-text">JobHunter</span>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-forest">
+              Optional support
+            </p>
+            <h1 className="font-display text-4xl font-semibold tracking-tight sm:text-5xl">
+              Support JobHunter
             </h1>
-            <p className="text-slate-400 text-lg max-w-xl mx-auto leading-relaxed">
-              JobHunter is free for everyone — no paywalls, no premium tiers, no
-              limits. If it&apos;s helped you land interviews, consider buying the
-              developer a coffee. ☕
+            <p className="mt-4 max-w-xl text-lg leading-relaxed text-muted-foreground">
+              JobHunter has a free tier for everyone. If it has helped you land interviews, a tip
+              keeps development moving — or{' '}
+              <Link href="/pricing" className="font-medium text-forest underline-offset-2 hover:underline">
+                upgrade to Pro
+              </Link>{' '}
+              for unlimited AI.
             </p>
           </AnimatedSection>
         </div>
       </section>
 
-      {/* Donation tiers */}
-      <section className="relative pb-24">
-        <div className="max-w-4xl mx-auto px-6">
-          <div className="grid sm:grid-cols-3 gap-6">
-            {tiers.map((tier, i) => (
-              <AnimatedSection key={tier.name} delay={i * 120}>
-                <div
-                  className={`relative glass-card rounded-2xl p-7 text-center h-full transition-all duration-300 hover:scale-[1.03] hover:-translate-y-1 ${
-                    tier.popular ? 'ring-2 ring-pink-500/30' : ''
-                  }`}
-                >
-                  {tier.popular && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs font-bold px-4 py-1 rounded-full">
-                      Most Popular
-                    </div>
-                  )}
-                  <div className="text-4xl mb-4">{tier.emoji}</div>
-                  <h3 className="text-white font-bold text-lg mb-1">
-                    {tier.name}
-                  </h3>
-                  <div className={`text-3xl font-bold mb-3 bg-gradient-to-r ${tier.color} bg-clip-text text-transparent`}>
-                    {tier.amount}
-                  </div>
-                  <p className="text-slate-400 text-sm leading-relaxed mb-6">
-                    {tier.description}
-                  </p>
-                  <a
-                    href={tier.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`inline-flex items-center gap-2 w-full justify-center py-3 rounded-xl font-semibold text-sm transition-all ${
-                      tier.popular
-                        ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:shadow-lg hover:shadow-pink-500/25'
-                        : 'bg-white/5 text-white border border-white/10 hover:bg-white/10'
+      {(message || success) && (
+        <div className="mx-auto max-w-4xl px-6 pb-4">
+          <p
+            className={`rounded border px-4 py-3 text-sm ${
+              success ? 'border-forest/40 bg-forest/5 text-forest' : 'border-border bg-card'
+            }`}
+          >
+            {success || message}
+          </p>
+        </div>
+      )}
+
+      <section className="pb-12">
+        <div className="mx-auto max-w-4xl px-6">
+          {!user && (
+            <div className="mb-6 max-w-sm">
+              <Label htmlFor="donate-email">Email for receipt</Label>
+              <Input
+                id="donate-email"
+                type="email"
+                className="mt-1.5"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+          )}
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            {tiers.map((tier, i) => {
+              const Icon = ICONS[tier.id as keyof typeof ICONS] || Heart;
+              return (
+                <AnimatedSection key={tier.id} delay={i * 80}>
+                  <div
+                    className={`flex h-full flex-col rounded-lg border bg-card p-6 ${
+                      tier.popular ? 'border-forest' : 'border-border'
                     }`}
                   >
-                    <Heart className="w-4 h-4" />
-                    Donate {tier.amount}
-                  </a>
-                </div>
-              </AnimatedSection>
-            ))}
-          </div>
-
-          {/* Custom amount note */}
-          <AnimatedSection className="mt-8 text-center">
-            <p className="text-slate-500 text-sm">
-              Want to give a different amount?{' '}
-              <a
-                href="#"
-                className="text-indigo-400 hover:text-indigo-300 underline"
-              >
-                Set a custom donation
-              </a>
-            </p>
-          </AnimatedSection>
-        </div>
-      </section>
-
-      {/* Other ways to support */}
-      <section className="relative py-24 bg-slate-900/30 border-y border-white/5">
-        <div className="max-w-4xl mx-auto px-6">
-          <AnimatedSection className="text-center mb-14">
-            <h2 className="text-3xl font-bold tracking-tight text-white mb-3">
-              Other Ways to Support
-            </h2>
-            <p className="text-slate-400 max-w-lg mx-auto">
-              Not everyone can donate, and that&apos;s perfectly fine! Here are
-              free ways to help:
-            </p>
-          </AnimatedSection>
-
-          <div className="grid sm:grid-cols-2 gap-5">
-            <AnimatedSection delay={0}>
-              <a
-                href="https://github.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="glass-card rounded-xl p-6 flex items-start gap-4 group hover:scale-[1.02] transition-all block"
-              >
-                <div className="w-11 h-11 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0 group-hover:bg-white/10 transition-colors">
-                  <Star className="w-5 h-5 text-amber-400" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold text-sm mb-1">
-                    Star on GitHub
-                  </h3>
-                  <p className="text-slate-500 text-xs leading-relaxed">
-                    A star helps others discover the project and motivates
-                    continued development.
-                  </p>
-                </div>
-              </a>
-            </AnimatedSection>
-
-            <AnimatedSection delay={100}>
-              <div className="glass-card rounded-xl p-6 flex items-start gap-4 group hover:scale-[1.02] transition-all">
-                <div className="w-11 h-11 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0 group-hover:bg-white/10 transition-colors">
-                  <Users className="w-5 h-5 text-blue-400" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold text-sm mb-1">
-                    Spread the Word
-                  </h3>
-                  <p className="text-slate-500 text-xs leading-relaxed">
-                    Tell your friends, share on social media, or recommend it in
-                    job-seeking communities.
-                  </p>
-                </div>
-              </div>
-            </AnimatedSection>
-
-            <AnimatedSection delay={200}>
-              <a
-                href="https://github.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="glass-card rounded-xl p-6 flex items-start gap-4 group hover:scale-[1.02] transition-all block"
-              >
-                <div className="w-11 h-11 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0 group-hover:bg-white/10 transition-colors">
-                  <Code2 className="w-5 h-5 text-emerald-400" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold text-sm mb-1">
-                    Contribute Code
-                  </h3>
-                  <p className="text-slate-500 text-xs leading-relaxed">
-                    Found a bug? Want a feature? PRs are welcome! Check the
-                    issues tab on GitHub.
-                  </p>
-                </div>
-              </a>
-            </AnimatedSection>
-
-            <AnimatedSection delay={300}>
-              <div className="glass-card rounded-xl p-6 flex items-start gap-4 group hover:scale-[1.02] transition-all">
-                <div className="w-11 h-11 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0 group-hover:bg-white/10 transition-colors">
-                  <Github className="w-5 h-5 text-purple-400" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold text-sm mb-1">
-                    Report Bugs
-                  </h3>
-                  <p className="text-slate-500 text-xs leading-relaxed">
-                    Found something broken? Open an issue. Every bug report makes
-                    JobHunter better for everyone.
-                  </p>
-                </div>
-              </div>
-            </AnimatedSection>
-          </div>
-        </div>
-      </section>
-
-      {/* What donations fund */}
-      <section className="relative py-24">
-        <div className="max-w-4xl mx-auto px-6">
-          <AnimatedSection className="text-center mb-14">
-            <h2 className="text-3xl font-bold tracking-tight text-white mb-3">
-              Where Your Support Goes
-            </h2>
-            <p className="text-slate-400 max-w-lg mx-auto">
-              Every dollar goes directly into making JobHunter better.
-            </p>
-          </AnimatedSection>
-
-          <div className="grid sm:grid-cols-2 gap-6">
-            {whatFunds.map((item, i) => (
-              <AnimatedSection key={item.title} delay={i * 100}>
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center flex-shrink-0">
-                    <item.icon className="w-5 h-5 text-indigo-400" />
+                    {tier.popular && (
+                      <span className="mb-3 self-start rounded bg-citrus px-2 py-0.5 text-xs font-semibold text-forest">
+                        Most popular
+                      </span>
+                    )}
+                    <Icon className="mb-3 h-5 w-5 text-forest" strokeWidth={1.75} />
+                    <h3 className="font-display text-lg font-semibold">{tier.label}</h3>
+                    <p className="mt-1 font-display text-2xl font-semibold text-forest">
+                      {tier.amountDisplay}
+                    </p>
+                    <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">
+                      {tier.description}
+                    </p>
+                    <button
+                      type="button"
+                      disabled={Boolean(paying)}
+                      onClick={() => donate(tier.amount, tier.label)}
+                      className={`mt-6 inline-flex items-center justify-center gap-2 rounded py-2.5 text-sm font-semibold transition-colors disabled:opacity-60 ${
+                        tier.popular
+                          ? 'bg-forest text-citrus hover:bg-forest-mid'
+                          : 'border border-border text-foreground hover:border-forest'
+                      }`}
+                    >
+                      {paying === tier.label && <Loader2 className="h-4 w-4 animate-spin" />}
+                      Donate {tier.amountDisplay}
+                    </button>
                   </div>
+                </AnimatedSection>
+              );
+            })}
+          </div>
+
+          <AnimatedSection className="mt-8">
+            <div className="mx-auto flex max-w-md flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="flex-1">
+                <Label htmlFor="custom-amount">Custom amount (₹)</Label>
+                <Input
+                  id="custom-amount"
+                  type="number"
+                  min={10}
+                  max={100000}
+                  className="mt-1.5"
+                  placeholder="250"
+                  value={customAmount}
+                  onChange={(e) => setCustomAmount(e.target.value)}
+                />
+              </div>
+              <button
+                type="button"
+                disabled={Boolean(paying)}
+                onClick={onCustom}
+                className="inline-flex items-center justify-center gap-2 rounded border border-border px-4 py-2.5 text-sm font-semibold hover:border-forest disabled:opacity-60"
+              >
+                {paying && customAmount ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Donate custom
+              </button>
+            </div>
+          </AnimatedSection>
+        </div>
+      </section>
+
+      <section className="border-y border-border bg-card/60 py-20">
+        <div className="mx-auto max-w-4xl px-6">
+          <AnimatedSection className="mb-10 max-w-xl">
+            <h2 className="font-display text-3xl font-semibold tracking-tight">
+              Other ways to support
+            </h2>
+            <p className="mt-3 text-muted-foreground">
+              Not everyone can donate — here are free ways to help.
+            </p>
+          </AnimatedSection>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {[
+              {
+                icon: Star,
+                title: 'Star on GitHub',
+                description:
+                  'A star helps others discover the project and motivates continued development.',
+                href: 'https://github.com',
+              },
+              {
+                icon: Users,
+                title: 'Spread the word',
+                description:
+                  'Tell friends, share on social media, or recommend it in job-seeking communities.',
+              },
+              {
+                icon: Code2,
+                title: 'Contribute code',
+                description: 'Found a bug? Want a feature? PRs are welcome on GitHub.',
+                href: 'https://github.com',
+              },
+              {
+                icon: Github,
+                title: 'Report bugs',
+                description:
+                  'Open an issue. Every bug report makes JobHunter better for everyone.',
+              },
+            ].map((item, i) => {
+              const Comp = item.href ? 'a' : 'div';
+              return (
+                <AnimatedSection key={item.title} delay={i * 60}>
+                  <Comp
+                    {...(item.href
+                      ? { href: item.href, target: '_blank', rel: 'noopener noreferrer' }
+                      : {})}
+                    className="flex items-start gap-4 rounded-lg border border-border bg-background p-5 transition-colors hover:border-forest"
+                  >
+                    <item.icon className="mt-0.5 h-5 w-5 shrink-0 text-forest" strokeWidth={1.75} />
+                    <div>
+                      <h3 className="font-display text-sm font-semibold">{item.title}</h3>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        {item.description}
+                      </p>
+                    </div>
+                  </Comp>
+                </AnimatedSection>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-20">
+        <div className="mx-auto max-w-4xl px-6">
+          <AnimatedSection className="mb-10 max-w-xl">
+            <h2 className="font-display text-3xl font-semibold tracking-tight">
+              Where support goes
+            </h2>
+            <p className="mt-3 text-muted-foreground">
+              Every contribution goes into making JobHunter better.
+            </p>
+          </AnimatedSection>
+
+          <div className="grid gap-8 sm:grid-cols-2">
+            {whatFunds.map((item, i) => (
+              <AnimatedSection key={item.title} delay={i * 60}>
+                <div className="flex items-start gap-4">
+                  <item.icon className="mt-0.5 h-5 w-5 shrink-0 text-forest" strokeWidth={1.75} />
                   <div>
-                    <h3 className="text-white font-semibold text-sm mb-1">
-                      {item.title}
-                    </h3>
-                    <p className="text-slate-500 text-sm leading-relaxed">
+                    <h3 className="font-display text-sm font-semibold">{item.title}</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                       {item.description}
                     </p>
                   </div>
@@ -292,28 +339,20 @@ export default function DonatePage() {
         </div>
       </section>
 
-      {/* Thank you CTA */}
-      <section className="relative py-24 overflow-hidden">
-        <div className="absolute inset-0 dot-grid opacity-30" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-pink-600/10 rounded-full blur-[140px]" />
-
-        <div className="relative z-10 max-w-2xl mx-auto px-6 text-center">
+      <section className="border-t border-border py-16">
+        <div className="mx-auto max-w-3xl px-6 text-center">
           <AnimatedSection>
-            <div className="text-5xl mb-6">🙏</div>
-            <h2 className="text-3xl font-bold text-white mb-3">
-              Thank You
-            </h2>
-            <p className="text-slate-400 leading-relaxed mb-8">
-              Whether you donate, star the repo, or simply use JobHunter to land
-              your dream job — thank you. This project exists because of people
-              like you.
+            <h2 className="font-display text-3xl font-semibold tracking-tight">Thank you</h2>
+            <p className="mx-auto mt-3 max-w-lg text-muted-foreground leading-relaxed">
+              Whether you donate, star the repo, or simply use JobHunter — thank you. This project
+              exists because of people like you.
             </p>
             <Link
               href="/"
-              className="inline-flex items-center gap-2 text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+              className="mt-8 inline-flex items-center justify-center gap-2 text-sm font-semibold text-forest hover:text-forest-mid"
             >
-              Back to Home
-              <ArrowRight className="w-4 h-4" />
+              Back to home
+              <ArrowRight className="h-4 w-4" />
             </Link>
           </AnimatedSection>
         </div>

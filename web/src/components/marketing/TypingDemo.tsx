@@ -2,154 +2,155 @@
 
 import { useState, useEffect } from 'react';
 import { useInView } from '@/hooks/useInView';
+import { Crosshair } from 'lucide-react';
 
-const DEMO_QUESTION = 'Why do you want to work at Acme Corp?';
-const DEMO_ANSWER =
-  "I'm drawn to Acme Corp's innovative approach to building developer tools that genuinely improve productivity. With 5 years of full-stack experience building scalable applications with React, Node.js, and TypeScript, I'm excited to contribute to your platform team and help shape the future of developer experience. Your recent launch of the AI-assisted code review tool particularly resonated with me — it aligns perfectly with my passion for using technology to eliminate repetitive work.";
+const FIELDS = [
+  { label: 'Full name', value: 'Jordan Lee', delay: 600 },
+  { label: 'Email', value: 'jordan@example.com', delay: 1200 },
+  { label: 'LinkedIn', value: 'linkedin.com/in/jordanlee', delay: 1800 },
+  {
+    label: 'Why do you want this role?',
+    value:
+      "I'm drawn to your platform team's focus on developer productivity. With five years building React and Node services, I'm ready to help ship tools that remove repetitive work.",
+    delay: 2600,
+    multiline: true,
+  },
+];
 
 export function TypingDemo() {
-  const { ref, isInView } = useInView({ threshold: 0.3 });
-  const [phase, setPhase] = useState<'idle' | 'clicking' | 'generating' | 'done'>('idle');
-  const [typedText, setTypedText] = useState('');
+  const { ref, isInView } = useInView({ threshold: 0.25 });
+  const [filled, setFilled] = useState<number[]>([]);
+  const [typingIndex, setTypingIndex] = useState(-1);
+  const [typedChars, setTypedChars] = useState(0);
+  const [popupVisible, setPopupVisible] = useState(false);
 
   useEffect(() => {
     if (!isInView) return;
 
-    // Phase 1: Wait, then "click" the button
-    const t1 = setTimeout(() => setPhase('clicking'), 800);
-    // Phase 2: Start generating after button "press"
-    const t2 = setTimeout(() => setPhase('generating'), 1400);
+    setFilled([]);
+    setTypingIndex(-1);
+    setTypedChars(0);
+    setPopupVisible(false);
 
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    timers.push(setTimeout(() => setPopupVisible(true), 400));
+
+    FIELDS.forEach((field, i) => {
+      timers.push(
+        setTimeout(() => {
+          setTypingIndex(i);
+          setTypedChars(0);
+        }, field.delay),
+      );
+    });
+
+    return () => timers.forEach(clearTimeout);
   }, [isInView]);
 
   useEffect(() => {
-    if (phase !== 'generating') return;
+    if (typingIndex < 0 || typingIndex >= FIELDS.length) return;
+    const target = FIELDS[typingIndex].value;
+    if (typedChars >= target.length) {
+      setFilled((prev) => (prev.includes(typingIndex) ? prev : [...prev, typingIndex]));
+      return;
+    }
 
-    let i = 0;
-    const interval = setInterval(() => {
-      i++;
-      setTypedText(DEMO_ANSWER.slice(0, i));
-      if (i >= DEMO_ANSWER.length) {
-        clearInterval(interval);
-        setPhase('done');
-      }
-    }, 14);
-
-    return () => clearInterval(interval);
-  }, [phase]);
-
-  const isLoading = phase === 'clicking' || phase === 'generating';
-  const charCount = typedText.length;
-  const maxChars = 500;
+    const speed = FIELDS[typingIndex].multiline ? 8 : 28;
+    const t = setTimeout(() => setTypedChars((c) => c + 1), speed);
+    return () => clearTimeout(t);
+  }, [typingIndex, typedChars]);
 
   return (
-    <div ref={ref} className="w-full max-w-2xl mx-auto">
+    <div ref={ref} className="relative w-full max-w-3xl mx-auto">
       {/* Browser chrome */}
-      <div className="rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-black/40">
-        {/* Title bar */}
-        <div className="bg-slate-800/80 border-b border-white/10 px-4 py-3 flex items-center gap-3">
-          <div className="flex gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-red-500/80" />
-            <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-            <div className="w-3 h-3 rounded-full bg-green-500/80" />
-          </div>
-          <div className="flex-1 flex justify-center">
-            <div className="bg-slate-700/60 rounded-lg px-4 py-1 text-xs text-slate-400 font-mono flex items-center gap-2">
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-              jobs.lever.co/acme-corp/apply
-            </div>
+      <div className="overflow-hidden rounded-lg border border-border bg-card shadow-[0_24px_48px_-24px_rgba(14,17,22,0.25)]">
+        <div className="flex items-center gap-2 border-b border-border bg-secondary/60 px-4 py-2.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-border" />
+          <span className="h-2.5 w-2.5 rounded-full bg-border" />
+          <span className="h-2.5 w-2.5 rounded-full bg-border" />
+          <div className="ml-3 flex-1 truncate rounded bg-background px-3 py-1 text-xs text-muted-foreground">
+            careers.acme.com/apply/senior-engineer
           </div>
         </div>
 
-        {/* Form content */}
-        <div className="bg-slate-900/90 p-6 sm:p-8">
-          {/* Company header */}
-          <div className="mb-6">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-sm">
-                AC
-              </div>
-              <div>
-                <h4 className="text-white font-semibold text-sm">Acme Corp</h4>
-                <p className="text-slate-400 text-xs">Senior Full Stack Developer</p>
-              </div>
+        <div className="relative grid gap-0 md:grid-cols-[1fr_200px]">
+          {/* Form */}
+          <div className="space-y-4 p-6 md:p-8">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Acme Corp
+              </p>
+              <h3 className="font-display text-xl font-semibold text-foreground">
+                Senior Software Engineer
+              </h3>
             </div>
-          </div>
 
-          {/* Question */}
-          <div className="mb-2">
-            <label className="block text-slate-300 text-sm font-medium mb-2">
-              {DEMO_QUESTION} <span className="text-red-400">*</span>
-            </label>
+            {FIELDS.map((field, i) => {
+              const isTyping = typingIndex === i;
+              const isDone = filled.includes(i);
+              const display = isDone
+                ? field.value
+                : isTyping
+                  ? field.value.slice(0, typedChars)
+                  : '';
 
-            {/* Textarea */}
-            <div
-              className={`relative rounded-xl border transition-all duration-300 ${
-                phase === 'generating' || phase === 'done'
-                  ? 'border-indigo-500/50 ring-2 ring-indigo-500/20'
-                  : 'border-white/10'
-              }`}
-            >
-              <div className="bg-slate-800/50 rounded-xl p-4 min-h-[140px] text-sm leading-relaxed">
-                {typedText ? (
-                  <span className="text-slate-200">{typedText}</span>
-                ) : (
-                  <span className="text-slate-500">Your answer...</span>
-                )}
-                {phase === 'generating' && (
-                  <span className="inline-block w-0.5 h-4 bg-indigo-400 ml-0.5 align-text-bottom animate-[blink_1s_ease-in-out_infinite]" />
-                )}
-              </div>
-
-              {/* Char count */}
-              {(phase === 'generating' || phase === 'done') && (
-                <div className="absolute bottom-2 right-3 text-xs text-slate-500">
-                  {charCount}/{maxChars}
+              return (
+                <div key={field.label}>
+                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                    {field.label}
+                  </label>
+                  <div
+                    className={`rounded border bg-background px-3 py-2 text-sm text-foreground transition-colors ${
+                      isTyping ? 'border-forest ring-2 ring-citrus/40' : 'border-border'
+                    } ${field.multiline ? 'min-h-[88px]' : ''}`}
+                  >
+                    {display || (
+                      <span className="text-muted-foreground/50">
+                        {field.multiline ? 'Write your answer…' : '—'}
+                      </span>
+                    )}
+                    {isTyping && !isDone && (
+                      <span className="ml-0.5 inline-block h-4 w-0.5 bg-forest align-middle animate-[blink_1s_ease-in-out_infinite]" />
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
+              );
+            })}
           </div>
 
-          {/* Button row */}
-          <div className="flex items-center gap-3 mt-3">
+          {/* Extension popup mock */}
+          <div
+            className={`border-t border-border bg-secondary/40 p-4 transition-all duration-500 md:border-l md:border-t-0 ${
+              popupVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
+            }`}
+          >
+            <div className="mb-3 flex items-center gap-2">
+              <div className="flex h-6 w-6 items-center justify-center rounded bg-forest text-citrus">
+                <Crosshair className="h-3 w-3" strokeWidth={2.5} />
+              </div>
+              <span className="font-display text-sm font-semibold">JobHunter</span>
+            </div>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Greenhouse detected · 4 fields
+            </p>
+            <div className="mb-2 rounded border border-border bg-card px-2.5 py-2 text-xs">
+              <span className="text-muted-foreground">Status</span>
+              <p className="mt-0.5 font-medium text-forest">
+                {filled.length === FIELDS.length
+                  ? 'Form filled'
+                  : typingIndex >= 0
+                    ? `Filling… ${filled.length + 1}/${FIELDS.length}`
+                    : 'Ready'}
+              </p>
+            </div>
             <button
-              className={`inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all duration-300 ${
-                phase === 'clicking'
-                  ? 'bg-indigo-600 text-white scale-95'
-                  : phase === 'generating'
-                    ? 'bg-indigo-600/80 text-white/80'
-                    : phase === 'done'
-                      ? 'bg-indigo-500 text-white'
-                      : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25'
-              }`}
+              type="button"
+              className="w-full rounded bg-forest px-3 py-2 text-xs font-semibold text-citrus"
+              tabIndex={-1}
             >
-              {isLoading ? (
-                <>
-                  <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Generating…</span>
-                </>
-              ) : (
-                <>
-                  <span>✨</span>
-                  <span>Generate Answer</span>
-                </>
-              )}
+              Auto-fill
             </button>
-
-            {phase === 'done' && (
-              <span className="text-emerald-400 text-xs font-medium animate-slide-up flex items-center gap-1">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                Generated · {charCount} chars
-              </span>
-            )}
           </div>
         </div>
       </div>

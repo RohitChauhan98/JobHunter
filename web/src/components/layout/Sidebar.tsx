@@ -12,11 +12,12 @@ import {
   FileText,
   Sparkles,
   Settings,
+  CreditCard,
   LogOut,
   Moon,
   Sun,
   Monitor,
-  Target,
+  Crosshair,
 } from 'lucide-react';
 
 const navItems = [
@@ -24,6 +25,7 @@ const navItems = [
   { label: 'Profile', href: '/dashboard/profile', icon: User },
   { label: 'Applications', href: '/dashboard/applications', icon: FileText },
   { label: 'AI Assistant', href: '/dashboard/ai', icon: Sparkles },
+  { label: 'Billing', href: '/dashboard/billing', icon: CreditCard },
   { label: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 
@@ -33,87 +35,82 @@ export function Sidebar() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <aside className="flex w-64 flex-col border-r border-border/50 bg-card/50 backdrop-blur-sm">
-      {/* Logo */}
-      <div className="flex h-16 items-center gap-3 border-b border-border/50 px-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-          <Target className="h-5 w-5 text-primary" />
+    <aside className="flex w-64 flex-col border-r border-border bg-card">
+      <div className="flex h-16 items-center gap-3 border-b border-border px-5">
+        <div className="flex h-8 w-8 items-center justify-center rounded bg-forest text-citrus">
+          <Crosshair className="h-4 w-4" strokeWidth={2.5} />
         </div>
-        <span className="text-lg font-bold gradient-text-blue">JobHunter</span>
+        <span className="font-display text-lg font-semibold tracking-tight text-foreground">
+          JobHunter
+        </span>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 space-y-1 p-3">
+      <nav className="flex-1 space-y-0.5 p-3">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
+          const active =
+            pathname === item.href ||
+            (item.href !== '/dashboard' && pathname.startsWith(item.href));
           return (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
+                'flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors',
                 active
-                  ? 'bg-primary/10 text-primary shadow-sm'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                  ? 'bg-forest/10 text-forest'
+                  : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
               )}
             >
-              <Icon className={cn('h-4 w-4', active && 'text-primary')} />
+              <Icon className={cn('h-4 w-4', active && 'text-forest')} />
               {item.label}
             </Link>
           );
         })}
       </nav>
 
-      {/* Theme Toggle */}
       <div className="px-3 pb-2">
-        <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-1">
-          <button
-            onClick={() => setTheme('light')}
-            className={cn(
-              'flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-all',
-              theme === 'light'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            <Sun className="h-3.5 w-3.5" />
-            Light
-          </button>
-          <button
-            onClick={() => setTheme('dark')}
-            className={cn(
-              'flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-all',
-              theme === 'dark'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            <Moon className="h-3.5 w-3.5" />
-            Dark
-          </button>
-          <button
-            onClick={() => setTheme('system')}
-            className={cn(
-              'flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-all',
-              theme === 'system'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            <Monitor className="h-3.5 w-3.5" />
-            Auto
-          </button>
+        <div className="flex items-center gap-1 rounded border border-border bg-background p-1">
+          {(
+            [
+              { id: 'light' as const, icon: Sun, label: 'Light' },
+              { id: 'dark' as const, icon: Moon, label: 'Dark' },
+              { id: 'system' as const, icon: Monitor, label: 'Auto' },
+            ] as const
+          ).map(({ id, icon: Icon, label }) => (
+            <button
+              key={id}
+              onClick={() => setTheme(id)}
+              className={cn(
+                'flex flex-1 items-center justify-center gap-1.5 rounded px-2 py-1.5 text-xs font-medium transition-colors',
+                theme === id
+                  ? 'bg-forest text-citrus'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* User / Logout */}
-      <div className="border-t border-border/50 p-3">
+      <div className="border-t border-border p-3">
         <div className="mb-2 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+          <div className="flex h-8 w-8 items-center justify-center rounded bg-forest/10 text-xs font-bold text-forest">
             {user?.email?.[0]?.toUpperCase() || '?'}
           </div>
-          <span className="truncate text-sm text-muted-foreground">{user?.email}</span>
+          <div className="min-w-0 flex-1">
+            <span className="block truncate text-sm text-muted-foreground">{user?.email}</span>
+            {user?.planName && (
+              <Link
+                href="/dashboard/billing"
+                className="text-[11px] font-medium text-forest hover:underline"
+              >
+                {user.planName} plan
+              </Link>
+            )}
+          </div>
         </div>
         <Button
           variant="ghost"

@@ -11,19 +11,17 @@ export default function TermsPage() {
   return (
     <>
       {/* Hero */}
-      <section className="relative pt-32 pb-12 overflow-hidden">
-        <div className="absolute inset-0 bg-slate-950" />
-        <div className="absolute inset-0 dot-grid opacity-30" />
-        <div className="relative z-10 max-w-3xl mx-auto px-6">
+      <section className="pt-32 pb-12">
+        <div className="max-w-3xl mx-auto px-6">
           <AnimatedSection>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-sm font-medium mb-6">
+            <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-forest mb-6">
               <FileText className="w-3.5 h-3.5" />
               Last updated: February 2026
             </div>
-            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">
+            <h1 className="font-display text-4xl sm:text-5xl font-semibold tracking-tight mb-4">
               Terms of Service
             </h1>
-            <p className="text-slate-400 text-lg">
+            <p className="text-muted-foreground text-lg">
               By using JobHunter, you agree to the following terms.
             </p>
           </AnimatedSection>
@@ -167,8 +165,8 @@ function TermsSection({
   return (
     <AnimatedSection>
       <div>
-        <h2 className="text-xl font-bold text-white mb-4">{title}</h2>
-        <div className="text-slate-400 text-sm leading-relaxed space-y-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-2 [&_strong]:text-slate-200">
+        <h2 className="font-display text-xl font-semibold text-foreground mb-4">{title}</h2>
+        <div className="text-muted-foreground text-sm leading-relaxed space-y-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-2 [&_strong]:text-foreground">
           {children}
         </div>
       </div>

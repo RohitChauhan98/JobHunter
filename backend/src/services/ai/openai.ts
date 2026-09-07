@@ -32,4 +32,13 @@ export class OpenAIProvider implements IAIProvider {
       tokensUsed: response.usage?.total_tokens,
     };
   }
+
+  async listModels(config: ProviderConfig): Promise<string[]> {
+    const client = new OpenAI({ apiKey: config.openaiApiKey });
+    const list = await client.models.list();
+    return list.data
+      .map((m) => m.id)
+      .filter((id) => !id.includes('embedding') && !id.includes('whisper') && !id.includes('tts') && !id.includes('dall-e'))
+      .sort();
+  }
 }

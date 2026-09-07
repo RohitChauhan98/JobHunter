@@ -193,7 +193,9 @@ export abstract class BaseAdapter implements PlatformAdapter {
 
     // 1. Explicit <label for="id">
     if (id) {
-      const label = element.ownerDocument.querySelector<HTMLLabelElement>(`label[for="${id}"]`);
+      const label = element.ownerDocument.querySelector<HTMLLabelElement>(
+        `label[for="${CSS.escape(id)}"]`,
+      );
       if (label) return label.textContent?.trim() || '';
     }
 

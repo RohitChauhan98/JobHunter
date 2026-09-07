@@ -150,6 +150,16 @@ function fillSingleField(field: DetectedField, value: string): FillResult {
   const element = field.element;
   const previousValue = getCurrentValue(element);
 
+  if (!element.isConnected) {
+    return {
+      field,
+      success: false,
+      valueFilled: '',
+      previousValue,
+      error: 'Field is no longer in the document (page may have re-rendered)',
+    };
+  }
+
   try {
     switch (field.inputType) {
       case 'select':
@@ -262,7 +272,7 @@ function fillRadio(
   }
 
   const radios = element.ownerDocument.querySelectorAll<HTMLInputElement>(
-    `input[type="radio"][name="${name}"]`,
+    `input[type="radio"][name="${CSS.escape(name)}"]`,
   );
 
   const target = value.toLowerCase();
@@ -272,7 +282,13 @@ function fillRadio(
     const radioLabel = radio.labels?.[0]?.textContent?.toLowerCase().trim() || '';
     const radioValue = radio.value.toLowerCase().trim();
 
-    if (radioValue === target || radioLabel.includes(target) || target.includes(radioLabel)) {
+    // Never match on empty labels ("".includes is always true for substring checks)
+    const labelMatch =
+      radioLabel.length > 0 &&
+      target.length > 0 &&
+      (radioLabel === target || radioLabel.includes(target) || target.includes(radioLabel));
+
+    if (radioValue === target || labelMatch) {
       radio.checked = true;
       dispatchInputEvents(radio);
       matched = true;

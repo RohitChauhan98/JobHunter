@@ -1,11 +1,14 @@
 import type { IAIProvider, AIGenerateOptions, AIGenerateResult, ProviderConfig } from './types.js';
+import { assertSafeLocalLlmUrl } from '../../utils/localLlmUrl.js';
 
 /**
  * Local LLM provider — supports any OpenAI-compatible local server:
- *   - Ollama (default, http://localhost:11434/v1)
  *   - LM Studio (http://localhost:1234/v1)
  *   - vLLM (http://localhost:8000/v1)
  *   - text-generation-webui (http://localhost:5000/v1)
+ *
+ * For Ollama use the dedicated `ollama` provider instead.
+ * Only loopback hosts are allowed (SSRF protection).
  */
 export class LocalLLMProvider implements IAIProvider {
   readonly name = 'local' as const;
@@ -15,22 +18,25 @@ export class LocalLLMProvider implements IAIProvider {
   }
 
   async generate(options: AIGenerateOptions, config: ProviderConfig): Promise<AIGenerateResult> {
-    const baseUrl = (config.localLlmUrl || 'http://localhost:11434').replace(/\/+$/, '');
+    const baseUrl = assertSafeLocalLlmUrl(config.localLlmUrl || 'http://localhost:11434');
     const model = config.localLlmModel || 'llama3';
 
-    // Build OpenAI-compatible messages
     const messages: Array<{ role: string; content: string }> = [];
     if (options.systemPrompt) {
       messages.push({ role: 'system', content: options.systemPrompt });
     }
     messages.push({ role: 'user', content: options.prompt });
 
-    // All major local LLM servers expose an OpenAI-compatible endpoint
     const endpoint = `${baseUrl}/v1/chat/completions`;
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (config.localLlmApiKey) {
+      headers.Authorization = `Bearer ${config.localLlmApiKey}`;
+    }
 
     const response = await fetch(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         model,
         messages,
@@ -41,8 +47,9 @@ export class LocalLLMProvider implements IAIProvider {
     });
 
     if (!response.ok) {
-      const errorBody = await response.text().catch(() => 'Unknown error');
-      throw new Error(`Local LLM error (${response.status}): ${errorBody}`);
+      // Do not leak upstream response bodies (may contain internal details)
+      console.error(`[LocalLLM] Provider error status=${response.status}`);
+      throw new Error(`Local LLM request failed (HTTP ${response.status})`);
     }
 
     const data: any = await response.json();
@@ -53,5 +60,20 @@ export class LocalLLMProvider implements IAIProvider {
       model,
       tokensUsed: data.usage?.total_tokens,
     };
+  }
+
+  /** List models via the OpenAI-compatible /v1/models endpoint. */
+  async listModels(config: ProviderConfig): Promise<string[]> {
+    const baseUrl = assertSafeLocalLlmUrl(config.localLlmUrl || 'http://localhost:11434');
+    const headers: Record<string, string> = {};
+    if (config.localLlmApiKey) {
+      headers.Authorization = `Bearer ${config.localLlmApiKey}`;
+    }
+    const response = await fetch(`${baseUrl}/v1/models`, { headers });
+    if (!response.ok) {
+      throw new Error(`Local LLM request failed (HTTP ${response.status})`);
+    }
+    const data: any = await response.json();
+    return (data.data || []).map((m: any) => m.id).sort();
   }
 }

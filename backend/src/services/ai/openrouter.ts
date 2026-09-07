@@ -46,4 +46,13 @@ export class OpenRouterProvider implements IAIProvider {
       tokensUsed: response.usage?.total_tokens,
     };
   }
+
+  async listModels(config: ProviderConfig): Promise<string[]> {
+    const client = new OpenAI({
+      apiKey: config.openrouterApiKey,
+      baseURL: OpenRouterProvider.BASE_URL,
+    });
+    const list = await client.models.list();
+    return list.data.map((m) => m.id).sort();
+  }
 }
