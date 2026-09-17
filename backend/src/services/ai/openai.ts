@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import type { IAIProvider, AIGenerateOptions, AIGenerateResult, ProviderConfig } from './types.js';
+import { extractCompletionText } from './extractCompletionText.js';
 
 export class OpenAIProvider implements IAIProvider {
   readonly name = 'openai' as const;
@@ -26,7 +27,7 @@ export class OpenAIProvider implements IAIProvider {
     });
 
     return {
-      text: response.choices[0]?.message?.content || '',
+      text: extractCompletionText(response),
       provider: 'openai',
       model,
       tokensUsed: response.usage?.total_tokens,

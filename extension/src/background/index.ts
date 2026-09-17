@@ -26,6 +26,13 @@ import type {
 import { storage } from '@/utils/storage';
 import { DEFAULT_SETTINGS, MAX_TRACKED_APPLICATIONS } from '@/utils/constants';
 import { api, ApiError } from '@/utils/api';
+import {
+  DASHBOARD_TAB_URL_PATTERNS,
+  MISSING_AUTH_MESSAGE,
+  WEB_TOKEN_STORAGE_KEY,
+  resolveAuthToken,
+  shouldReplaceStoredToken,
+} from '@/utils/authSync';
 
 // ---------------------------------------------------------------------------
 // Message Handler
@@ -168,6 +175,10 @@ async function handleMessage(
       }
 
       case 'AI_GENERATE_COVER_LETTER': {
+        if (!(await ensureAuthToken())) {
+          sendResponse({ error: MISSING_AUTH_MESSAGE });
+          break;
+        }
         const { jobDescription } = message.data as { jobDescription: string };
         const coverResult = await api.generateCoverLetter(jobDescription);
         sendResponse({ success: true, ...coverResult });
@@ -175,6 +186,10 @@ async function handleMessage(
       }
 
       case 'AI_GENERATE_ANSWER': {
+        if (!(await ensureAuthToken())) {
+          sendResponse({ error: MISSING_AUTH_MESSAGE });
+          break;
+        }
         const { question, context: ctx } = message.data as { question: string; context?: string };
         const answerResult = await api.generateAnswer(question, ctx);
         sendResponse({ success: true, ...answerResult });
@@ -191,12 +206,17 @@ async function handleMessage(
           jobTitle?: string;
         };
         try {
+          if (!(await ensureAuthToken())) {
+            sendResponse({ error: MISSING_AUTH_MESSAGE });
+            break;
+          }
           const smartResult = await api.smartAnswer(smartData);
           sendResponse({ success: true, ...smartResult });
         } catch (aiErr: any) {
           // Provide a user-friendly message for common AI errors
-          const msg = aiErr?.message || 'Smart answer generation failed';
-          console.warn('[JobHunter BG] Smart answer failed:', msg);
+          const raw = aiErr?.message || 'Smart answer generation failed';
+          const msg = /missing or malformed token/i.test(raw) ? MISSING_AUTH_MESSAGE : raw;
+          console.warn('[JobHunter BG] Smart answer failed:', raw);
           sendResponse({ error: msg });
         }
         break;
@@ -205,6 +225,18 @@ async function handleMessage(
       case 'TRY_IMPORT_WEB_TOKEN': {
         const imported = await tryImportWebToken();
         sendResponse({ success: imported });
+        break;
+      }
+
+      case 'SYNC_WEB_TOKEN': {
+        const { token: incoming } = (message.data || {}) as { token?: string | null };
+        const stored = await getStoredAuthToken();
+        if (!shouldReplaceStoredToken(stored, incoming ?? null)) {
+          sendResponse({ success: true });
+          break;
+        }
+        const ok = await api.importAndVerifyToken(incoming!);
+        sendResponse({ success: ok });
         break;
       }
 
@@ -221,38 +253,49 @@ async function handleMessage(
 // Handler Implementations
 // ---------------------------------------------------------------------------
 
+/** Read the JWT stored by the extension, if any. */
+async function getStoredAuthToken(): Promise<string | null> {
+  const result = await chrome.storage.local.get('authToken');
+  return (result.authToken as string | undefined) || null;
+}
+
+/** Import a dashboard token if the extension has none, then return the stored JWT. */
+async function ensureAuthToken(): Promise<string | null> {
+  return resolveAuthToken({
+    getStoredToken: getStoredAuthToken,
+    importFromWeb: tryImportWebToken,
+  });
+}
+
 /**
- * Try to auto-import the auth token from the web dashboard (localhost:3000).
+ * Try to auto-import the auth token from the web dashboard.
  * If the user is already logged in on the web, we grab the JWT from the web
  * page's localStorage and store it in the extension's chrome.storage so the
  * user doesn't have to sign in separately.
  */
 async function tryImportWebToken(): Promise<boolean> {
   // Skip if we already have a token
-  const existing = await chrome.storage.local.get('authToken');
-  if (existing.authToken) return true;
+  if (await getStoredAuthToken()) return true;
 
   try {
-    // Find any open web dashboard tab
-    const tabs = await chrome.tabs.query({ url: 'http://localhost:3000/*' });
-    if (tabs.length === 0) return false;
+    const tabs = await chrome.tabs.query({ url: [...DASHBOARD_TAB_URL_PATTERNS] });
+    for (const tab of tabs) {
+      if (!tab.id) continue;
 
-    const tab = tabs[0];
-    if (!tab.id) return false;
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: (key: string) => localStorage.getItem(key),
+        args: [WEB_TOKEN_STORAGE_KEY],
+      });
 
-    // Read the JWT token from the web dashboard's localStorage
-    const results = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: () => localStorage.getItem('jh_token'),
-    });
-
-    const token = results?.[0]?.result;
-    if (token && typeof token === 'string') {
-      const ok = await api.importAndVerifyToken(token);
-      if (ok) {
-        console.log('[JobHunter] Auto-imported and verified auth token from web dashboard');
+      const token = results?.[0]?.result;
+      if (token && typeof token === 'string') {
+        const ok = await api.importAndVerifyToken(token);
+        if (ok) {
+          console.log('[JobHunter] Auto-imported and verified auth token from web dashboard');
+          return true;
+        }
       }
-      return ok;
     }
   } catch (err) {
     // Web tab might not be accessible — that's fine
@@ -459,6 +502,7 @@ async function handleUndoRequest(): Promise<void> {
 
 /** Log when the service worker starts up */
 console.log('[JobHunter] Background service worker started');
+ensureAuthToken().catch(() => {});
 
 /**
  * On extension install or update, set default storage values if they don't exist.

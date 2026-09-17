@@ -77,4 +77,17 @@ await contentBundle.write({
 });
 await contentBundle.close();
 
+// ── Pass 4: Dashboard auth bridge (Rollup — IIFE) ───────────────────────
+console.log('\n📦 Pass 4 — Building dashboard auth bridge (Rollup IIFE)…');
+const authBridgeBundle = await rollup({
+  input: resolve(root, 'src/content/authBridge.ts'),
+  plugins: rollupPlugins,
+});
+await authBridgeBundle.write({
+  file: resolve(root, 'dist/content/authBridge.js'),
+  format: 'iife',
+  sourcemap: false,
+});
+await authBridgeBundle.close();
+
 console.log('\n✅ Extension build complete!\n');

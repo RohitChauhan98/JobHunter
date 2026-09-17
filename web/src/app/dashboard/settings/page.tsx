@@ -80,7 +80,12 @@ export default function SettingsPage() {
     setSaving(true);
     setMessage('');
     try {
-      const updated = await aiApi.updateConfig(configPayload(config));
+      const payload = configPayload(config);
+      // Ensure local provider has a valid model — empty string breaks LM Studio
+      if (payload.activeProvider === 'local' && !payload.localLlmModel) {
+        payload.localLlmModel = 'mistralai/ministral-3-3b';
+      }
+      const updated = await aiApi.updateConfig(payload);
       setConfig(updated);
       setMessage('Settings saved!');
     } catch (err: any) {
@@ -451,11 +456,11 @@ export default function SettingsPage() {
             <Input
               type="number"
               min={64}
-              max={8192}
+              max={16384}
               value={config.maxTokens}
               onChange={(e) => updateField('maxTokens', parseInt(e.target.value) || 1024)}
             />
-            <p className="text-xs text-muted-foreground">Controls max output length (64 – 8192)</p>
+            <p className="text-xs text-muted-foreground">Controls max output length (64 – 16384). Reasoning models need higher values.</p>
           </div>
         </CardContent>
       </Card>

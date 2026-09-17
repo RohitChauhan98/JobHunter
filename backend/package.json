@@ -12,6 +12,7 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {

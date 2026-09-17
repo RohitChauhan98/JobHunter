@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node scripts/build.mjs",
     "build": "tsc && node scripts/build.mjs",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
     "lint": "eslint src/ --ext .ts,.tsx",
     "type-check": "tsc --noEmit"
   },

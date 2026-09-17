@@ -1,5 +1,6 @@
 import type { IAIProvider, AIGenerateOptions, AIGenerateResult, ProviderConfig } from './types.js';
 import { assertSafeLocalLlmUrl } from '../../utils/localLlmUrl.js';
+import { extractCompletionText } from './extractCompletionText.js';
 
 /**
  * Ollama provider — uses Ollama's native API (http://localhost:11434/api/chat).
@@ -50,7 +51,7 @@ export class OllamaProvider implements IAIProvider {
 
     const data: any = await response.json();
     return {
-      text: data.message?.content || '',
+      text: extractCompletionText(data),
       provider: 'ollama',
       model,
       tokensUsed: (data.prompt_eval_count || 0) + (data.eval_count || 0),

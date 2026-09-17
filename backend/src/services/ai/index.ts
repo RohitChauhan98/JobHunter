@@ -149,7 +149,14 @@ export async function generate(userId: string, options: AIGenerateOptions): Prom
   }
 
   try {
-    return await provider.generate(options, config);
+    const result = await provider.generate(options, config);
+    if (!result.text?.trim()) {
+      throw AppError.badRequest(
+        `The ${config.activeProvider} model returned an empty answer. Increase max tokens in AI settings, or switch to a standard chat model (reasoning models often use the whole budget thinking).`,
+        'AI_EMPTY_RESPONSE',
+      );
+    }
+    return result;
   } catch (err: any) {
     if (err instanceof AppError) throw err;
     console.error(`[AI] Generation failed (${config.activeProvider}):`, err?.message || err);
@@ -203,9 +210,15 @@ export async function testConnection(userId: string, providerName?: AIProvider):
 
   try {
     const result = await provider.generate(
-      { prompt: 'Say "Connection successful!" in exactly those words.', maxTokens: 20 },
+      { prompt: 'Say "Connection successful!" in exactly those words.', maxTokens: 64 },
       config,
     );
+    if (!result.text?.trim()) {
+      return {
+        success: false,
+        message: `Connected to ${targetProvider} (${result.model}) but the model returned an empty reply. Increase max tokens or pick a standard chat model.`,
+      };
+    }
     return { success: true, message: `Connected to ${targetProvider} (${result.model})` };
   } catch (err: any) {
     console.error(`[AI] Connection test failed (${targetProvider}):`, err?.message || err);

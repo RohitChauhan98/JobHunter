@@ -221,7 +221,8 @@ export type MessageType =
   | 'AI_GENERATE_COVER_LETTER'
   | 'AI_GENERATE_ANSWER'
   | 'AI_SMART_ANSWER'
-  | 'TRY_IMPORT_WEB_TOKEN';
+  | 'TRY_IMPORT_WEB_TOKEN'
+  | 'SYNC_WEB_TOKEN';
 
 export interface ExtensionMessage<T = unknown> {
   type: MessageType;

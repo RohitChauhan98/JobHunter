@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import type { IAIProvider, AIGenerateOptions, AIGenerateResult, ProviderConfig } from './types.js';
+import { extractCompletionText } from './extractCompletionText.js';
 
 /**
  * GLM provider — Z.ai's OpenAI-compatible chat completions API.
@@ -31,10 +32,12 @@ export class GLMProvider implements IAIProvider {
       messages,
       temperature: options.temperature ?? config.temperature ?? 0.7,
       max_tokens: options.maxTokens ?? config.maxTokens ?? 1024,
-    });
+      // GLM-4.5/4.6 default to thinking; that often leaves message.content empty.
+      thinking: { type: 'disabled' },
+    } as OpenAI.ChatCompletionCreateParamsNonStreaming);
 
     return {
-      text: response.choices[0]?.message?.content || '',
+      text: extractCompletionText(response),
       provider: 'glm',
       model,
       tokensUsed: response.usage?.total_tokens,

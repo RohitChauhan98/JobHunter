@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import type { IAIProvider, AIGenerateOptions, AIGenerateResult, ProviderConfig } from './types.js';
+import { extractCompletionText } from './extractCompletionText.js';
 
 /**
  * OpenRouter provides access to many models via an OpenAI-compatible API.
@@ -40,7 +41,7 @@ export class OpenRouterProvider implements IAIProvider {
     });
 
     return {
-      text: response.choices[0]?.message?.content || '',
+      text: extractCompletionText(response),
       provider: 'openrouter',
       model,
       tokensUsed: response.usage?.total_tokens,

@@ -27,7 +27,7 @@ const generateSchema = z.object({
   prompt: z.string().min(1).max(20_000),
   systemPrompt: z.string().max(10_000).optional(),
   temperature: z.number().min(0).max(2).optional(),
-  maxTokens: z.number().min(1).max(8192).optional(),
+  maxTokens: z.number().min(1).max(16_384).optional(),
 });
 
 const coverLetterSchema = z.object({
@@ -71,7 +71,7 @@ const updateConfigSchema = z.object({
   glmModel: z.string().max(200).optional(),
   glmBaseUrl: z.string().max(500).optional(),
   temperature: z.number().min(0).max(2).optional(),
-  maxTokens: z.number().min(1).max(8192).optional(),
+  maxTokens: z.number().min(1).max(16_384).optional(),
 });
 
 const testConnectionSchema = z.object({

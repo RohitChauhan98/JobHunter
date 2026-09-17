@@ -22,6 +22,12 @@ export function setToken(t: string | null) {
   } else {
     localStorage.removeItem('jh_token');
   }
+  if (typeof window !== 'undefined') {
+    window.postMessage(
+      { source: 'jobhunter-web', type: 'TOKEN_CHANGED', token: t },
+      window.location.origin,
+    );
+  }
 }
 
 export function getToken(): string | null {
